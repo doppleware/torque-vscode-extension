@@ -140,6 +140,6 @@
     "date-fns": "^4.1.0",
     "express": "^5.1.0",
     "husky": "^9.1.7",
-    "path-to-regexp": "^8.2.0"
+    "path-to-regexp": "^8.3.0"
   }
 }
