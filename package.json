@@ -6,7 +6,7 @@
   "publisher": "Quali",
   "icon": "logo.png",
   "engines": {
-    "vscode": "^1.94.0"
+    "vscode": "^1.104.0"
   },
   "keywords": [
     "OpenTelemetry",
