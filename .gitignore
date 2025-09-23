@@ -1,0 +1,6 @@
+node_modules/
+out/
+.eslintcache
+.DS_Store
+*.vsix
+.vscode-test
