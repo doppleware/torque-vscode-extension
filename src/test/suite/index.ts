@@ -1,38 +1,38 @@
-import * as path from 'path';
-import Mocha from 'mocha';
-import { glob } from 'glob';
+import * as path from "path";
+import Mocha from "mocha";
+import { glob } from "glob";
 
 export function run(): Promise<void> {
-	// Create the mocha test
-	const mocha = new Mocha({
-		ui: 'tdd',
-		color: true
-	});
+  // Create the mocha test
+  const mocha = new Mocha({
+    ui: "tdd",
+    color: true
+  });
 
-	const testsRoot = path.resolve(__dirname, '..');
+  const testsRoot = path.resolve(__dirname, "..");
 
-	return new Promise((c, e) => {
-		const pattern = '**/**.test.js';
-		const cwd = testsRoot;
+  return new Promise((c, e) => {
+    const pattern = "**/**.test.js";
+    const cwd = testsRoot;
 
-		try {
-			const files = glob.sync(pattern, { cwd });
+    try {
+      const files = glob.sync(pattern, { cwd });
 
-			// Add files to the test suite
-			files.forEach(f => mocha.addFile(path.resolve(testsRoot, f)));
+      // Add files to the test suite
+      files.forEach((f) => mocha.addFile(path.resolve(testsRoot, f)));
 
-			// Run the mocha test
-			mocha.run((failures: number) => {
-				if (failures > 0) {
-					e(new Error(`${failures} tests failed.`));
-				} else {
-					c();
-				}
-			});
-		} catch (err) {
-			// eslint-disable-next-line no-console
-			console.error(err);
-			e(err instanceof Error ? err : new Error(String(err)));
-		}
-	});
+      // Run the mocha test
+      mocha.run((failures: number) => {
+        if (failures > 0) {
+          e(new Error(`${failures} tests failed.`));
+        } else {
+          c();
+        }
+      });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(err);
+      e(err instanceof Error ? err : new Error(String(err)));
+    }
+  });
 }
