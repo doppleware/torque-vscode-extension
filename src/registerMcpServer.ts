@@ -6,6 +6,7 @@ import { getWorkspaceSettingsFolderPath } from "./ides/getWorkspaceSettingsFolde
 
 export interface CursorMCPServerConfig {
   url: string;
+  headers?: Record<string, string>;
 }
 
 export interface CursorMCPConfig {
@@ -15,6 +16,7 @@ export interface CursorMCPConfig {
 export interface VSCodeMCPServerConfig {
   url: string;
   type?: "http";
+  headers?: Record<string, string>;
 }
 
 export interface VSCodeMCPConfig {
@@ -66,7 +68,7 @@ const updateMcpConfig = (
     fs.mkdirSync(folderPath, { recursive: true });
   }
 
-  const mcpServerUrl = `${url}/mcp/${token}`;
+  const mcpServerUrl = `${url}/api/torque_mcp`;
 
   let updatedMcpConfig: VSCodeMCPConfig | CursorMCPConfig | WindsurfMCPConfig;
 
@@ -94,7 +96,10 @@ const updateMcpConfig = (
               ...existingServers,
               [MCP_SERVER_LABEL]: {
                 ...existingServer,
-                url: mcpServerUrl
+                url: mcpServerUrl,
+                headers: {
+                  Authorization: `Bearer ${token}`
+                }
               }
             }
           } as CursorMCPConfig;
@@ -129,7 +134,10 @@ const updateMcpConfig = (
               [MCP_SERVER_LABEL]: {
                 ...existingServer,
                 url: mcpServerUrl,
-                type: "http"
+                type: "http",
+                headers: {
+                  Authorization: `Bearer ${token}`
+                }
               }
             }
           } as VSCodeMCPConfig;
@@ -151,7 +159,10 @@ const updateMcpConfig = (
         updatedMcpConfig = {
           mcpServers: {
             [MCP_SERVER_LABEL]: {
-              url: mcpServerUrl
+              url: mcpServerUrl,
+              headers: {
+                Authorization: `Bearer ${token}`
+              }
             }
           }
         } as CursorMCPConfig;
@@ -161,7 +172,10 @@ const updateMcpConfig = (
           servers: {
             [MCP_SERVER_LABEL]: {
               url: mcpServerUrl,
-              type: "http"
+              type: "http",
+              headers: {
+                Authorization: `Bearer ${token}`
+              }
             }
           }
         } as VSCodeMCPConfig;
