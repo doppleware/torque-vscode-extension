@@ -508,8 +508,7 @@ export async function activate(context: vscode.ExtensionContext) {
         // Get URL
         const url = await vscode.window.showInputBox({
           prompt: "Enter your Torque API URL",
-          placeHolder: "e.g., https://localhost:5051",
-          value: "https://localhost:5051",
+          placeHolder: "e.g., https://account.qtorque.io",
           validateInput: (value) => {
             if (!value) {
               return "URL is required";
