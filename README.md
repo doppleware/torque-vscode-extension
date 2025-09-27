@@ -1,12 +1,13 @@
 # Torque AI
 
-Autonomous identification, root cause analysis and remediation of code and infrastructure issues
+[![Release](https://img.shields.io/github/v/release/doppleware/torque-vscode-extension)](https://github.com/doppleware/torque-vscode-extension/releases)
+[![Tests](https://github.com/doppleware/torque-vscode-extension/actions/workflows/tests.yml/badge.svg)](https://github.com/doppleware/torque-vscode-extension/actions/workflows/tests.yml)
 
 For more info check out our [website](https://quali.com)
 
 ## Architecture
 
-The Torque AI VS Code extension provides a comprehensive integration between VS Code and the Torque AI platform through multiple communication channels and services.
+The Torque AI VS Code extension provides a comprehensive integration between VS Code and the Torque AI platform.
 
 ```mermaid
 graph TB
