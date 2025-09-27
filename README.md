@@ -1,7 +1,7 @@
 # Torque AI
 
 [![Release](https://img.shields.io/github/v/release/doppleware/torque-vscode-extension)](https://github.com/doppleware/torque-vscode-extension/releases)
-[![Tests](https://github.com/doppleware/torque-vscode-extension/actions/workflows/tests.yml/badge.svg)](https://github.com/doppleware/torque-vscode-extension/actions/workflows/tests.yml)
+[![Tests](https://github.com/doppleware/torque-vscode-extension/actions/workflows/ci.yml/badge.svg)](https://github.com/doppleware/torque-vscode-extension/actions/workflows/ci.yml)
 
 For more info check out our [website](https://quali.com)
 
