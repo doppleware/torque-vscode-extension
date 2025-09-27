@@ -15,7 +15,7 @@ graph TB
         URI[URI Router]
         API[API Client]
         SET[Settings Manager]
-        EXP[Express Server<br/>:33100-33199]
+        EXP[Express Server :33100-33199]
     end
 
     subgraph "VS Code Integration"
@@ -26,8 +26,8 @@ graph TB
     end
 
     subgraph "External Services"
-        TORQUE[Torque AI Platform<br/>API Server]
-        MCP[MCP Servers<br/>(Claude/Cursor/Windsurf)]
+        TORQUE[Torque AI Platform API Server]
+        MCP[MCP Servers Claude/Cursor/Windsurf]
         CHAT[IDE Chat Systems]
     end
 
@@ -56,7 +56,7 @@ graph TB
     %% Settings management
     SET --> CFG
     SET --> MCP
-    CFG --> |torque.url<br/>torque.token<br/>torque.login<br/>torque.password| SET
+    CFG --> |torque.url, torque.token, torque.login, torque.password| SET
 
     %% Express server endpoints
     EXP --> |"/api/torque/about"| API
@@ -67,7 +67,7 @@ graph TB
     API --> CHAT
 
     %% External integrations
-    SET --> |MCP Config<br/>JSON Files| MCP
+    SET --> |MCP Config JSON Files| MCP
 
     style EXT fill:#e1f5fe
     style URI fill:#f3e5f5
