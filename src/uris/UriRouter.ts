@@ -30,14 +30,31 @@ export class UriRouter {
       keys,
       handler
     });
+
+    // Debug logging
+    // eslint-disable-next-line no-console
+    console.log(`[UriRouter] Registered route: ${pattern}`);
   }
 
   async handleUri(uri: vscode.Uri): Promise<boolean> {
     const queryParams = this.parseQueryParams(uri.query);
 
+    // eslint-disable-next-line no-console
+    console.log(
+      `[UriRouter] Handling URI path: ${uri.path}, available routes: ${this.routes.length}`
+    );
+    // eslint-disable-next-line no-console
+    console.log(
+      `[UriRouter] Available route patterns: ${this.routes.map((r) => r.pattern).join(", ")}`
+    );
+
     // Try to match path-based routes
     for (const route of this.routes) {
       const match = route.regexp.exec(uri.path);
+      // eslint-disable-next-line no-console
+      console.log(
+        `[UriRouter] Testing route ${route.pattern} against ${uri.path}: ${match ? "MATCH" : "no match"}`
+      );
 
       if (match) {
         try {

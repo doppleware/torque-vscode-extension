@@ -6,13 +6,12 @@ import axios, {
 import https from "https";
 import { AgenticService } from "./services/AgenticService";
 import { AuthenticationService } from "./services/AuthenticationService";
-import type { LoginPayload, UserSession } from "./services/types";
+import type { UserSession } from "./services/types";
 
 export class ApiClient {
   private instance: AxiosInstance;
   private session?: UserSession;
   private isRefreshing = false;
-  private credentials?: LoginPayload;
   private readonly authEndpoints = [
     "/Authentication/login",
     "/Authentication/refresh-token"
@@ -28,7 +27,7 @@ export class ApiClient {
         rejectUnauthorized: false
       }),
       headers: {
-        "X-API-Token": `Token ${token}`
+        Authorization: `Bearer ${token}`
       }
     });
 
@@ -93,16 +92,8 @@ export class ApiClient {
             // Retry the original request with new token
             return this.instance(originalRequest);
           } catch (refreshError) {
-            // If refresh fails, attempt re-login if credentials are available
-            if (this.credentials) {
-              try {
-                await this.login(this.credentials);
-                return this.instance(originalRequest);
-              } catch (loginError) {
-                this.clearSession();
-                throw loginError;
-              }
-            }
+            // If refresh fails, clear session
+            this.clearSession();
             throw refreshError;
           }
         }
@@ -148,23 +139,13 @@ export class ApiClient {
     return this.instance;
   }
 
-  async login(credentials: LoginPayload): Promise<UserSession> {
-    try {
-      const session = await this.authentication.login(credentials);
-      this.session = session;
-
-      this.instance.defaults.headers.authorization = `Bearer ${session.accessToken}`;
-
-      return session;
-    } catch (error) {
-      this.session = undefined;
-      throw error;
-    }
+  setSession(session: UserSession): void {
+    this.session = session;
+    this.instance.defaults.headers.authorization = `Bearer ${session.accessToken}`;
   }
 
   clearSession(): void {
     this.session = undefined;
-    this.credentials = undefined;
     delete this.instance.defaults.headers.authorization;
   }
 
@@ -172,7 +153,7 @@ export class ApiClient {
     this.instance.defaults.baseURL = baseURL;
 
     if (token) {
-      this.instance.defaults.headers["X-API-Token"] = `Token ${token}`;
+      this.instance.defaults.headers.Authorization = `Bearer ${token}`;
     }
 
     this.clearSession();

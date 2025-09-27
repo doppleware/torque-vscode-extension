@@ -94,10 +94,9 @@ This is the Torque AI VS Code extension by Quali. It provides autonomous identif
 The extension uses these VS Code settings:
 
 - `torque.url` - API endpoint URL (default: https://localhost:5051)
-- `torque.token` - API access token
-- `torque.login` - User login credential
-- `torque.password` - User password credential
-- `torque.copySettingsToMcp` - Enable MCP server configuration sync
+- `torque.token` - API access token (stored securely using VS Code SecretStorage)
+
+When both URL and token are configured, the extension automatically updates the MCP server configuration.
 
 ## Build System
 

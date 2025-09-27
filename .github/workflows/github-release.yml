@@ -1,0 +1,54 @@
+name: GitHub Release Build
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build-extension:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run type checking
+        run: npm run check-types
+
+      - name: Build production
+        run: npm run build:prod
+
+      - name: Package extension
+        run: npm run package
+
+      - name: Get VSIX filename
+        id: vsix
+        run: |
+          VSIX_FILE=$(ls *.vsix | head -1)
+          echo "filename=$VSIX_FILE" >> $GITHUB_OUTPUT
+          echo "Found VSIX file: $VSIX_FILE"
+
+      - name: Upload VSIX to release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ${{ steps.vsix.outputs.filename }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload VSIX as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: torque-extension-${{ github.event.release.tag_name }}
+          path: ${{ steps.vsix.outputs.filename }}
+          retention-days: 90

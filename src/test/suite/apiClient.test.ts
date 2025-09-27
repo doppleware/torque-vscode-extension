@@ -32,8 +32,8 @@ suite("ApiClient Test Suite", () => {
     // Verify the base URL was updated
     assert.strictEqual(apiClient.client.defaults.baseURL, newUrl);
     assert.strictEqual(
-      apiClient.client.defaults.headers["X-API-Token"],
-      `Token ${newToken}`
+      apiClient.client.defaults.headers.Authorization,
+      `Bearer ${newToken}`
     );
   });
 

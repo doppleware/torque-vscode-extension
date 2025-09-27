@@ -3,7 +3,19 @@
     "allow": [
       "WebFetch(domain:code.visualstudio.com)",
       "Bash(npm install:*)",
-      "Bash(npm test)"
+      "Bash(npm test)",
+      "Bash(npm run check-types:*)",
+      "Bash(npm run lint)",
+      "Bash(npm run build:*)",
+      "Bash(npm run build:prod:*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:stackoverflow.com)",
+      "Bash(npm run pretest:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npx:*)",
+      "Bash(npm run compile:dev:*)",
+      "Bash(npm run build:dev:*)"
     ],
     "deny": [],
     "ask": []

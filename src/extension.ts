@@ -2,18 +2,70 @@ import express from "express";
 import net from "net";
 import vscode from "vscode";
 import { ApiClient } from "./api/ApiClient";
-import { registerMcpServer } from "./registerMcpServer";
+import { updateMcpServer } from "./registerMcpServer";
 import { SettingsManager } from "./SettingsManager";
-import type { PackageJSON } from "./types";
-import { attachIncidentFileToChatContext } from "./uris/handlers/context";
+import { handleEnvironmentContextUrl } from "./uris/handlers/environmentContext";
 import { openWebviewWithUrl } from "./uris/handlers/webview";
 import { UriRouter } from "./uris/UriRouter";
+import { logger } from "./utils/Logger";
 
 const START_PORT = 33100;
 const END_PORT = 33199;
 
 let apiClient: ApiClient | null = null;
-// let mcpServerDisposable: vscode.Disposable | null = null;
+interface McpHealthResult {
+  success: boolean;
+  error?: string;
+  responseTime?: number;
+  statusCode?: number;
+}
+
+let mcpServerDisposable: {
+  dispose(): void;
+  triggerDiscovery(): void;
+  checkHealth(): Promise<McpHealthResult>;
+} | null = null;
+let isActivated = false;
+
+/**
+ * Checks if the extension is properly configured
+ */
+const isExtensionConfigured = async (
+  settingsManager: SettingsManager
+): Promise<boolean> => {
+  const url = await settingsManager.getSetting<string>("url");
+  const token = await settingsManager.getSetting<string>("token");
+  const isConfigured = !!(url && token);
+  logger.debug(
+    `Extension configuration check: ${isConfigured ? "configured" : "not configured"}`
+  );
+  return isConfigured;
+};
+
+/**
+ * Shows setup notification to user if not configured
+ */
+const showSetupNotificationIfNeeded = async (
+  settingsManager: SettingsManager
+): Promise<void> => {
+  const isConfigured = await isExtensionConfigured(settingsManager);
+
+  if (!isConfigured) {
+    logger.info("Extension not configured, showing setup notification");
+    const result = await vscode.window.showInformationMessage(
+      "🚀 Torque AI extension is installed but not configured. Set up your API connection to enable MCP tools.",
+      "Configure Torque AI",
+      "Later"
+    );
+
+    if (result === "Configure Torque AI") {
+      logger.info("User selected to configure Torque AI");
+      await vscode.commands.executeCommand("torque.setup");
+    } else {
+      logger.info("User chose to skip configuration");
+    }
+  }
+};
 
 const getBaseDomain = (url: string): string => {
   const hostname = new URL(url).hostname;
@@ -25,12 +77,16 @@ const findAvailablePort = async (
   start: number,
   end: number
 ): Promise<number> => {
+  logger.debug(`Searching for available port in range ${start}-${end}`);
   for (let port = start; port <= end; port++) {
     if (await isPortAvailable(port)) {
+      logger.info(`Found available port: ${port}`);
       return port;
     }
   }
-  throw new Error(`No available ports in range ${start}-${end}`);
+  const error = new Error(`No available ports in range ${start}-${end}`);
+  logger.error("Failed to find available port", error);
+  throw error;
 };
 
 const isPortAvailable = (port: number): Promise<boolean> => {
@@ -44,47 +100,168 @@ const isPortAvailable = (port: number): Promise<boolean> => {
 };
 
 async function initializeClient(
-  settingsManager: SettingsManager
+  settingsManager: SettingsManager,
+  shouldRegisterMcp = false,
+  showSuccessMessage = false,
+  showUserMessages = false
 ): Promise<void> {
   const url = await settingsManager.getSetting<string>("url");
   const token = await settingsManager.getSetting<string>("token");
-  const login = await settingsManager.getSetting<string>("login");
-  const password = await settingsManager.getSetting<string>("password");
 
-  if (!token || !url || !login || !password) {
+  if (!token || !url) {
+    logger.debug("Client initialization skipped - missing URL or token");
     return;
   }
 
+  logger.info(`Initializing API client with URL: ${url}`);
   // Initialize the client
   apiClient = new ApiClient(url, token);
 
-  try {
-    await apiClient.login({ username: login, password: password });
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error("API login failed:", error);
-    vscode.window.showErrorMessage("API login failed.");
+  // Register MCP server if requested and both URL and token are available
+  if (shouldRegisterMcp) {
+    try {
+      logger.info("Registering MCP server");
+      // Update MCP server registration with new configuration
+      mcpServerDisposable = updateMcpServer(
+        mcpServerDisposable,
+        url,
+        token,
+        showUserMessages
+      );
+
+      // Enable required VS Code settings
+      await enableRequiredSettings();
+
+      if (showSuccessMessage) {
+        await showMcpSetupSuccessMessage();
+      }
+      logger.info("MCP server registration completed successfully");
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      logger.error("Failed to register MCP server", error as Error);
+      vscode.window.showErrorMessage(
+        `Failed to register MCP server: ${errorMessage}`
+      );
+      throw error;
+    }
   }
 }
 
+/**
+ * Enables required VS Code settings for MCP functionality
+ */
+const enableRequiredSettings = async (): Promise<void> => {
+  try {
+    logger.debug("Enabling required VS Code settings for MCP");
+    const config = vscode.workspace.getConfiguration();
+
+    // Enable chat agent if available
+    const agentEnabled = config.get("chat.agent.enabled");
+    if (!agentEnabled) {
+      try {
+        logger.info("Enabling chat.agent.enabled setting");
+        await config.update(
+          "chat.agent.enabled",
+          true,
+          vscode.ConfigurationTarget.Global
+        );
+      } catch {
+        logger.debug(
+          "chat.agent.enabled setting not available in this VS Code version"
+        );
+      }
+    }
+
+    // Enable MCP if available (this setting may not exist in all VS Code versions)
+    const mcpEnabled = config.get("chat.mcp.enabled");
+    if (!mcpEnabled) {
+      try {
+        logger.info("Enabling chat.mcp.enabled setting");
+        await config.update(
+          "chat.mcp.enabled",
+          true,
+          vscode.ConfigurationTarget.Global
+        );
+      } catch {
+        logger.debug(
+          "chat.mcp.enabled setting not available in this VS Code version"
+        );
+      }
+    }
+    logger.debug("Required settings check completed");
+  } catch (error) {
+    logger.warn("Failed to update some VS Code settings", {
+      error: error instanceof Error ? error.message : String(error)
+    });
+    // Settings update is not critical, silently continue
+  }
+};
+
+/**
+ * Shows success message and guides user to next steps
+ */
+const showMcpSetupSuccessMessage = async (): Promise<void> => {
+  const result = await vscode.window.showInformationMessage(
+    "✅ Torque AI configured successfully!\n\n" +
+      "🔧 MCP server registered and ready to use.\n" +
+      "📱 Open Copilot Chat to access Torque AI tools.",
+    "Open Chat",
+    "Check Status"
+  );
+
+  if (result === "Open Chat") {
+    try {
+      await vscode.commands.executeCommand("workbench.action.chat.open");
+    } catch {
+      vscode.window.showInformationMessage(
+        "Could not open chat automatically. Please open Copilot Chat manually and look for Torque tools."
+      );
+    }
+  } else if (result === "Check Status") {
+    await vscode.commands.executeCommand("torque.checkMcpStatus");
+  }
+};
+
 export async function activate(context: vscode.ExtensionContext) {
+  if (isActivated) {
+    logger.warn("Extension already activated, skipping duplicate activation");
+    return;
+  }
+  isActivated = true;
+  logger.info("Torque AI extension activating");
+
   const uriRouter = new UriRouter();
 
   const settingsManager = new SettingsManager(context);
-  await initializeClient(settingsManager);
+
+  // Initialize client and MCP server if configured
+  await initializeClient(settingsManager, true);
+
+  // Show setup notification if not configured (with delay to avoid startup noise)
+  setTimeout(() => {
+    void showSetupNotificationIfNeeded(settingsManager);
+  }, 2000);
+
+  // Language Model Tools are automatically registered from package.json
+  // The torque_get_environment_details tool is declared in package.json and will be automatically available
 
   uriRouter.route(
-    "/chat/context/add/file/incident/:incidentId",
+    "/chat/context/add/environment/:space_name/:environment_id",
     async (params) => {
-      const incidentId = params.incidentId;
-      if (incidentId) {
-        await attachIncidentFileToChatContext(incidentId);
-      }
+      logger.info(
+        `Handling environment context for space: ${params.space_name}, environment: ${params.environment_id}`
+      );
+      await handleEnvironmentContextUrl({
+        space_name: params.space_name,
+        environment_id: params.environment_id
+      });
     }
   );
 
   uriRouter.route("/webview/open", async (_, query) => {
     const url = query?.url;
+    logger.info(`Webview open request for URL: ${url}`);
 
     const settingsUrl = await settingsManager.getSetting<string>("url");
     if (settingsUrl && url) {
@@ -92,89 +269,387 @@ export async function activate(context: vscode.ExtensionContext) {
       const urlBaseDomain = getBaseDomain(url);
 
       if (settingsBaseDomain === urlBaseDomain) {
+        logger.info(`Opening webview for allowed domain: ${urlBaseDomain}`);
         openWebviewWithUrl(url);
       } else {
+        logger.warn(
+          `Webview blocked - domain mismatch. Settings: ${settingsBaseDomain}, Requested: ${urlBaseDomain}`
+        );
         vscode.window.showErrorMessage(
           "URL must be from the same base domain as configured"
         );
       }
     } else {
+      logger.warn(
+        "Webview open failed - missing URL parameter or settings URL"
+      );
       vscode.window.showErrorMessage("URL parameter is required for webview");
     }
   });
 
-  // Listen for configuration changes
+  // Since URL and token are now stored as secrets, configuration changes are not relevant
+  // The configuration listener is kept for potential future settings
   const configChangeListener = vscode.workspace.onDidChangeConfiguration(
-    async (event) => {
-      const extensionName = (context.extension.packageJSON as PackageJSON).name;
-      if (
-        event.affectsConfiguration(`${extensionName}.url`) ||
-        event.affectsConfiguration(`${extensionName}.token`) ||
-        event.affectsConfiguration(`${extensionName}.login`) ||
-        event.affectsConfiguration(`${extensionName}.password`)
-      ) {
-        const changedScope = settingsManager.detectChangedScope([
-          "url",
-          "token",
-          "login",
-          "password"
-        ]);
-
-        const copySettingsToMcp = await settingsManager.getSetting<boolean>(
-          "copySettingsToMcp",
-          changedScope
-        );
-
-        if (changedScope && copySettingsToMcp) {
-          await settingsManager.setSetting(
-            "copySettingsToMcp",
-            false,
-            changedScope
-          );
-        }
-
-        await initializeClient(settingsManager);
-      }
-
-      // Update MCP server configuration
-      if (event.affectsConfiguration(`${extensionName}.copySettingsToMcp`)) {
-        const changedScope = settingsManager.detectChangedScope([
-          "copySettingsToMcp"
-        ]);
-        const url = await settingsManager.getSetting<string>(
-          "url",
-          changedScope
-        );
-        const token = await settingsManager.getSetting<string>(
-          "token",
-          changedScope
-        );
-        const copySettingsToMcp = await settingsManager.getSetting<boolean>(
-          "copySettingsToMcp",
-          changedScope
-        );
-
-        if (changedScope && copySettingsToMcp && url && token) {
-          try {
-            registerMcpServer(url, token, changedScope);
-          } catch (error) {
-            // eslint-disable-next-line no-console
-            console.error("MCP server registration failed:", error);
-            vscode.window.showErrorMessage("Failed to register MCP server.");
-          }
-        }
-      }
+    async () => {
+      // No configuration-based settings to monitor currently
+      // This is kept for future extensibility
     }
   );
 
-  context.subscriptions.push(configChangeListener);
-  context.subscriptions.push(
-    vscode.window.registerUriHandler({
-      handleUri: (uri) => {
-        void uriRouter.handleUri(uri);
+  // Register MCP discovery trigger command
+  let triggerMcpDiscoveryCommand: vscode.Disposable | undefined;
+  try {
+    triggerMcpDiscoveryCommand = vscode.commands.registerCommand(
+      "torque.triggerMcpDiscovery",
+      () => {
+        if (mcpServerDisposable) {
+          mcpServerDisposable.triggerDiscovery();
+          vscode.window.showInformationMessage(
+            "MCP server discovery triggered."
+          );
+        } else {
+          vscode.window.showWarningMessage(
+            "No MCP server registered. Run 'Setup Torque AI' command first."
+          );
+        }
       }
-    })
-  );
+    );
+  } catch {
+    logger.warn(
+      "Command torque.triggerMcpDiscovery already registered, skipping"
+    );
+  }
+
+  // Register MCP health check command
+  let checkMcpHealthCommand: vscode.Disposable | undefined;
+  try {
+    checkMcpHealthCommand = vscode.commands.registerCommand(
+      "torque.checkMcpHealth",
+      async () => {
+        if (!mcpServerDisposable) {
+          vscode.window.showWarningMessage(
+            "No MCP server registered. Run 'Setup Torque AI' command first."
+          );
+          return;
+        }
+
+        await vscode.window.showInformationMessage(
+          "Checking MCP server health...",
+          { modal: false }
+        );
+
+        try {
+          const healthResult: McpHealthResult =
+            await mcpServerDisposable.checkHealth();
+
+          if (healthResult.success) {
+            vscode.window.showInformationMessage(
+              `✅ MCP Server Health Check Passed\n` +
+                `Response time: ${healthResult.responseTime}ms\n` +
+                `Status: ${healthResult.statusCode}`
+            );
+          } else {
+            vscode.window.showErrorMessage(
+              `❌ MCP Server Health Check Failed\n` +
+                `Error: ${healthResult.error}\n` +
+                `Response time: ${healthResult.responseTime}ms\n` +
+                `Status: ${healthResult.statusCode ?? "N/A"}`
+            );
+          }
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          vscode.window.showErrorMessage(
+            `Health check failed: ${errorMessage}`
+          );
+        }
+      }
+    );
+  } catch {
+    logger.warn("Command torque.checkMcpHealth already registered, skipping");
+  }
+
+  // Register MCP status check command
+  let checkMcpStatusCommand: vscode.Disposable | undefined;
+  try {
+    checkMcpStatusCommand = vscode.commands.registerCommand(
+      "torque.checkMcpStatus",
+      async () => {
+        const isConfigured = await isExtensionConfigured(settingsManager);
+        const status = mcpServerDisposable
+          ? "✅ Registered"
+          : "❌ Not registered";
+        let healthStatus = "⏳ Unknown";
+
+        // Check health if server is registered
+        if (mcpServerDisposable) {
+          try {
+            const healthResult: McpHealthResult =
+              await mcpServerDisposable.checkHealth();
+            healthStatus = healthResult.success
+              ? `✅ Healthy (${healthResult.responseTime}ms)`
+              : `❌ Unhealthy: ${healthResult.error}`;
+          } catch (error) {
+            healthStatus = `❌ Health check failed: ${error instanceof Error ? error.message : "Unknown error"}`;
+          }
+        }
+
+        const configStatus = isConfigured
+          ? "✅ Configured"
+          : "❌ Not configured";
+
+        // Check if GitHub Copilot is installed
+        const copilotExtension =
+          vscode.extensions.getExtension("GitHub.copilot");
+        const copilotStatus = copilotExtension
+          ? copilotExtension.isActive
+            ? "✅ Active"
+            : "⚠️ Inactive"
+          : "❌ Not installed";
+
+        // Check MCP API availability
+        const mcpApiStatus =
+          typeof vscode.lm?.registerMcpServerDefinitionProvider === "function"
+            ? "✅ Available"
+            : "❌ Not available";
+
+        // Check VS Code version
+        const vscodeVersion = vscode.version;
+
+        // Check MCP settings
+        const config = vscode.workspace.getConfiguration();
+        const mcpEnabled = config.get("chat.mcp.enabled");
+        const agentEnabled = config.get("chat.agent.enabled");
+
+        // Get all available commands to check for MCP commands
+        const allCommands = await vscode.commands.getCommands();
+        const mcpCommands = allCommands
+          .filter((cmd) => cmd.includes("mcp"))
+          .slice(0, 5); // Show first 5
+
+        if (!isConfigured) {
+          const result = await vscode.window.showWarningMessage(
+            `📊 Torque AI Status:\n` +
+              `Configuration: ${configStatus}\n` +
+              `MCP Server: ${status}\n` +
+              `Server Health: ${healthStatus}\n` +
+              `GitHub Copilot: ${copilotStatus}\n` +
+              `MCP API: ${mcpApiStatus}\n` +
+              `VS Code Version: ${vscodeVersion}\n` +
+              `MCP Enabled: ${mcpEnabled ? "✅ Yes" : "❌ No"}\n` +
+              `Agent Enabled: ${agentEnabled ? "✅ Yes" : "❌ No"}\n` +
+              `MCP Commands Available: ${mcpCommands.length}\n\n` +
+              "⚠️  Extension needs configuration before MCP server can be registered.",
+            "Configure Now"
+          );
+
+          if (result === "Configure Now") {
+            await vscode.commands.executeCommand("torque.setup");
+          }
+          return;
+        }
+
+        try {
+          // Try to execute the built-in MCP command to list servers
+          await vscode.commands.executeCommand("mcp.showInstalledServers");
+
+          vscode.window.showInformationMessage(
+            `📊 Torque AI Status:\n` +
+              `Configuration: ${configStatus}\n` +
+              `MCP Server: ${status}\n` +
+              `Server Health: ${healthStatus}\n` +
+              `GitHub Copilot: ${copilotStatus}\n` +
+              `MCP API: ${mcpApiStatus}\n` +
+              `VS Code Version: ${vscodeVersion}\n` +
+              `MCP Enabled: ${mcpEnabled ? "✅ Yes" : "❌ No"}\n` +
+              `Agent Enabled: ${agentEnabled ? "✅ Yes" : "❌ No"}\n` +
+              `MCP Commands: ${mcpCommands.join(", ") || "None"}\n\n` +
+              "🔍 Debugging Info:\n" +
+              "- Health check shows actual server connectivity\n" +
+              "- Use 'Torque: Check MCP Health' for detailed diagnostics\n" +
+              "- Check browser console (Help > Toggle Developer Tools) for '[Torque MCP]' logs\n" +
+              "- Try 'Torque: Refresh MCP Connection' command\n\n" +
+              "💡 Next steps:\n" +
+              "1. Check the MCP Servers panel that opened\n" +
+              "2. Open Copilot Chat (⌃⌘I or Ctrl+Alt+I)\n" +
+              "3. Click the Tools button and enable 'torque' server\n" +
+              "4. Ask: '@agent use torque tools to analyze my code'"
+          );
+        } catch {
+          vscode.window.showInformationMessage(
+            `📊 Torque AI Status:\n` +
+              `Configuration: ${configStatus}\n` +
+              `MCP Server: ${status}\n` +
+              `Server Health: ${healthStatus}\n` +
+              `GitHub Copilot: ${copilotStatus}\n` +
+              `MCP API: ${mcpApiStatus}\n` +
+              `VS Code Version: ${vscodeVersion}\n` +
+              `MCP Enabled: ${mcpEnabled ? "✅ Yes" : "❌ No"}\n` +
+              `Agent Enabled: ${agentEnabled ? "✅ Yes" : "❌ No"}\n` +
+              `MCP Commands: ${mcpCommands.join(", ") || "None"}\n\n` +
+              "📋 Requirements:\n" +
+              "1. Install GitHub Copilot extension\n" +
+              "2. Enable Agent Mode in Copilot Chat\n" +
+              "3. Look for Torque tools in the chat interface\n" +
+              "4. Use 'Torque: Check MCP Health' to verify connectivity"
+          );
+        }
+      }
+    );
+  } catch {
+    logger.warn("Command torque.checkMcpStatus already registered, skipping");
+  }
+
+  // Register unified setup command
+  let setupCommand: vscode.Disposable | undefined;
+  try {
+    setupCommand = vscode.commands.registerCommand("torque.setup", async () => {
+      try {
+        // Get URL
+        const url = await vscode.window.showInputBox({
+          prompt: "Enter your Torque API URL",
+          placeHolder: "e.g., https://localhost:5051",
+          value: "https://localhost:5051",
+          validateInput: (value) => {
+            if (!value) {
+              return "URL is required";
+            }
+            try {
+              new URL(value);
+              return undefined;
+            } catch {
+              return "Please enter a valid URL";
+            }
+          }
+        });
+
+        if (!url) {
+          return;
+        }
+
+        // Get token
+        const token = await vscode.window.showInputBox({
+          prompt: "Enter your Torque API token",
+          password: true,
+          placeHolder: "API token will be stored securely",
+          validateInput: (value) => {
+            if (!value) {
+              return "Token is required";
+            }
+            if (value.length < 10) {
+              return "Token seems too short";
+            }
+            return undefined;
+          }
+        });
+
+        if (!token) {
+          return;
+        }
+
+        // Store both settings securely
+        await settingsManager.setSetting("url", url);
+        await settingsManager.setSetting("token", token);
+
+        // Initialize client and register MCP server with success message and user error messages
+        await initializeClient(settingsManager, true, true, true);
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        vscode.window.showErrorMessage(`Setup failed: ${errorMessage}`);
+      }
+    });
+  } catch {
+    logger.warn("Command torque.setup already registered, skipping");
+  }
+
+  // Register test URI command for debugging
+  let testUriCommand: vscode.Disposable | undefined;
+  try {
+    testUriCommand = vscode.commands.registerCommand(
+      "torque.testUri",
+      async () => {
+        const testUri =
+          "vscode://torque.extension/chat/context/add/environment/test-space/test-env";
+        try {
+          await vscode.env.openExternal(vscode.Uri.parse(testUri));
+          vscode.window.showInformationMessage(
+            `Triggered test URI: ${testUri}`
+          );
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          vscode.window.showErrorMessage(
+            `Failed to trigger test URI: ${errorMessage}`
+          );
+        }
+      }
+    );
+  } catch {
+    logger.warn("Command torque.testUri already registered, skipping");
+  }
+
+  context.subscriptions.push(configChangeListener);
+  if (setupCommand) {
+    context.subscriptions.push(setupCommand);
+  }
+  if (triggerMcpDiscoveryCommand) {
+    context.subscriptions.push(triggerMcpDiscoveryCommand);
+  }
+  if (checkMcpHealthCommand) {
+    context.subscriptions.push(checkMcpHealthCommand);
+  }
+  if (checkMcpStatusCommand) {
+    context.subscriptions.push(checkMcpStatusCommand);
+  }
+  if (testUriCommand) {
+    context.subscriptions.push(testUriCommand);
+  }
+  const uriHandler = vscode.window.registerUriHandler({
+    handleUri: async (uri) => {
+      logger.info(`[URI Handler] Received URI: ${uri.toString()}`);
+      logger.info(
+        `[URI Handler] URI scheme: ${uri.scheme}, authority: ${uri.authority}, path: ${uri.path}, query: ${uri.query}`
+      );
+
+      // Also log to console for immediate debugging
+      // eslint-disable-next-line no-console
+      console.log(`[Torque URI] Received: ${uri.toString()}`);
+
+      try {
+        const handled = await uriRouter.handleUri(uri);
+        if (!handled) {
+          logger.warn(
+            `[URI Handler] No route found for URI: ${uri.toString()}`
+          );
+          vscode.window.showWarningMessage(
+            `No handler found for URL: ${uri.toString()}`
+          );
+        } else {
+          logger.info(
+            `[URI Handler] Successfully handled URI: ${uri.toString()}`
+          );
+          vscode.window.showInformationMessage(
+            `Successfully processed: ${uri.toString()}`
+          );
+        }
+      } catch (error) {
+        logger.error(
+          `[URI Handler] Failed to handle URI: ${uri.toString()}`,
+          error as Error
+        );
+        vscode.window.showErrorMessage(
+          `Failed to handle URL: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
+      }
+    }
+  });
+
+  logger.info(`[Extension] URI handler registered successfully`);
+  // eslint-disable-next-line no-console
+  console.log(`[Torque Extension] URI handler registered for scheme: torque`);
+
+  context.subscriptions.push(uriHandler);
 
   const app = express();
   app.use(express.json());
@@ -197,48 +672,37 @@ export async function activate(context: vscode.ExtensionContext) {
     });
   });
 
-  app.post(
-    "/api/torque/chat/context/add/file/incident/:incidentId",
-    async (req, res) => {
-      try {
-        await attachIncidentFileToChatContext(req.params.incidentId);
-        res.sendStatus(200);
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error("Error attaching file to the chat context:", error);
-        vscode.window.showErrorMessage(
-          "Failed to attach file to the chat context."
-        );
-        res.status(500).json({
-          success: false,
-          error: error instanceof Error ? error.message : "Unknown error"
-        });
-      }
-    }
-  );
-
   const server = app.listen(port, () => {
-    // eslint-disable-next-line no-console
-    console.info(`Extension server running at http://localhost:${port}`);
+    logger.info(`Express server started on port ${port}`);
   });
 
   context.subscriptions.push({
     dispose: () => {
+      logger.info("Extension deactivating - cleaning up resources");
       server.close();
       apiClient = null;
+      if (mcpServerDisposable) {
+        mcpServerDisposable.dispose();
+        mcpServerDisposable = null;
+      }
     }
   });
+
+  logger.info("Torque AI extension activation completed successfully");
 }
 
 export function deactivate() {
+  logger.info("Torque AI extension deactivating");
   if (apiClient) {
     apiClient = null;
   }
 
-  // if (mcpServerDisposable) {
-  //   mcpServerDisposable.dispose();
-  //   mcpServerDisposable = null;
-  // }
+  if (mcpServerDisposable) {
+    mcpServerDisposable.dispose();
+    mcpServerDisposable = null;
+  }
+  isActivated = false;
+  logger.dispose();
 }
 
 export function getClient(): ApiClient {

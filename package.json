@@ -1,27 +1,16 @@
 {
-  "name": "torque",
+  "name": "extension",
   "displayName": "Torque AI",
   "description": "Autonomous identification, root cause analysis and remediation of code and infrastructure issues",
   "version": "0.6.0",
-  "publisher": "Quali",
+  "publisher": "torque",
   "icon": "logo.png",
   "engines": {
     "vscode": "^1.104.0"
   },
   "keywords": [
-    "OpenTelemetry",
-    "Observability",
-    "IntelliSense",
-    "IntelliCode",
-    "Flask",
-    "FastAPI",
-    "ASP.NET",
-    "C#",
-    "eBPF",
-    "Jaeger",
-    "Python",
-    "dotnet",
-    "Continuous Delivery",
+    "PlaformEngineering",
+    "SRE",
     "DevOps"
   ],
   "badges": [],
@@ -41,44 +30,73 @@
     "Debuggers"
   ],
   "activationEvents": [
-    "onStartupFinished"
+    "onStartupFinished",
+    "onUri:torque"
   ],
   "main": "./out/extension.js",
   "contributes": {
-    "configuration": {
-      "properties": {
-        "torque.url": {
-          "type": "string",
-          "title": "URL",
-          "default": "https://localhost:5051",
-          "description": "API URL",
-          "order": 0
-        },
-        "torque.token": {
-          "type": "string",
-          "default": "",
-          "description": "API token",
-          "order": 1
-        },
-        "torque.login": {
-          "type": "string",
-          "description": "User login",
-          "order": 2
-        },
-        "torque.password": {
-          "type": "string",
-          "description": "User password",
-          "order": 3
-        },
-        "torque.copySettingsToMcp": {
-          "type": "boolean",
-          "title": "Copy settings to MCP",
-          "default": false,
-          "description": "Copy settings to MCP server",
-          "order": 4
+    "commands": [
+      {
+        "command": "torque.setup",
+        "title": "Configure Torque AI",
+        "category": "Torque",
+        "icon": "$(gear)"
+      },
+      {
+        "command": "torque.triggerMcpDiscovery",
+        "title": "Refresh MCP Connection",
+        "category": "Torque",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "torque.checkMcpHealth",
+        "title": "Check MCP Health",
+        "category": "Torque",
+        "icon": "$(pulse)"
+      },
+      {
+        "command": "torque.checkMcpStatus",
+        "title": "Check Torque AI Status",
+        "category": "Torque",
+        "icon": "$(info)"
+      },
+      {
+        "command": "torque.testUri",
+        "title": "Test URI Handler",
+        "category": "Torque",
+        "icon": "$(debug)"
+      }
+    ],
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "torqueMcpProvider",
+        "label": "Torque MCP Server Provider"
+      }
+    ],
+    "languageModelTools": [
+      {
+        "name": "torque_get_environment_details",
+        "displayName": "Get Torque Environment Details",
+        "modelDescription": "Retrieve detailed information about a specific Torque environment including owner, cost, connections, and configuration",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "space_name": {
+              "type": "string",
+              "description": "Name of the Torque space"
+            },
+            "environment_id": {
+              "type": "string",
+              "description": "ID of the environment to get details for"
+            }
+          },
+          "required": [
+            "space_name",
+            "environment_id"
+          ]
         }
       }
-    }
+    ]
   },
   "scripts": {
     "clean": "rimraf ./out",
@@ -117,6 +135,8 @@
     "@eslint/js": "^9.32.0",
     "@types/express": "^5.0.3",
     "@types/mocha": "^10.0.10",
+    "@types/proxyquire": "^1.3.31",
+    "@types/sinon": "^17.0.4",
     "@types/vscode": "^1.104.0",
     "@vscode/test-cli": "^0.0.11",
     "@vscode/test-electron": "^2.5.2",
@@ -131,7 +151,9 @@
     "mocha": "^11.7.2",
     "npm-run-all": "^4.1.5",
     "prettier": "^3.6.2",
+    "proxyquire": "^2.1.3",
     "rimraf": "^6.0.1",
+    "sinon": "^21.0.0",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.44.1"
   },

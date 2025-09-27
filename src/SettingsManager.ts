@@ -10,11 +10,8 @@ export type Settings = Record<string, string | undefined>;
 
 export class SettingsManager {
   private static readonly SETTING_DEFINITIONS: SettingDefinition[] = [
-    { key: "url", secret: false },
-    { key: "token", secret: false },
-    { key: "login", secret: false },
-    { key: "password", secret: false },
-    { key: "copySettingsToMcp", secret: false }
+    { key: "url", secret: true },
+    { key: "token", secret: true }
   ];
 
   private context: vscode.ExtensionContext;

@@ -7,12 +7,11 @@ suite("SettingsManager Test Suite", () => {
   let settingsManager: SettingsManager;
 
   setup(async () => {
-    const ext = vscode.extensions.getExtension("Quali.torque");
+    const ext = vscode.extensions.getExtension("torque.extension");
     assert.ok(ext);
     await ext.activate();
 
     // Create a mock extension context for testing
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
     context = {
       extension: ext,
       extensionPath: ext.extensionPath,

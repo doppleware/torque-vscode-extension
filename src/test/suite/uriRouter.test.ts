@@ -30,7 +30,7 @@ suite("UriRouter Test Suite", () => {
 
     uriRouter.route("/test/:id", handler);
 
-    const testUri = vscode.Uri.parse("vscode://Quali.torque/test/123");
+    const testUri = vscode.Uri.parse("vscode://torque.extension/test/123");
 
     // Should not throw
     await uriRouter.handleUri(testUri);
@@ -48,7 +48,7 @@ suite("UriRouter Test Suite", () => {
     uriRouter.route("/test/query", handler);
 
     const testUri = vscode.Uri.parse(
-      "vscode://Quali.torque/test/query?param1=value1&param2=value2"
+      "vscode://torque.extension/test/query?param1=value1&param2=value2"
     );
 
     // Should not throw
