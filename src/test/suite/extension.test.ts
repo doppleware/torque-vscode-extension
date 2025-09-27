@@ -68,7 +68,7 @@ suite("MCP and Tool Registration - Extension Activation", () => {
   suite("GIVEN user installs Torque AI extension", () => {
     test("SHOULD activate extension successfully", async () => {
       // Act
-      const ext = vscode.extensions.getExtension("torque.extension");
+      const ext = vscode.extensions.getExtension("quali.torque-ai");
 
       // Assert
       assert.ok(ext, "Extension should be available in the extension registry");
@@ -85,7 +85,7 @@ suite("MCP and Tool Registration - Extension Activation", () => {
       // Since the extension is already activated in suiteSetup,
       // we verify that it has the registerTool capability and
       // that the extension activated successfully (which implies tools were registered)
-      const ext = vscode.extensions.getExtension("torque.extension");
+      const ext = vscode.extensions.getExtension("quali.torque-ai");
       assert.ok(ext, "Extension should be available");
       assert.strictEqual(ext.isActive, true, "Extension should be active");
 
@@ -97,7 +97,7 @@ suite("MCP and Tool Registration - Extension Activation", () => {
     test("SHOULD register URI handler for torque:// scheme", async () => {
       // Since the extension is already activated in suiteSetup,
       // we verify that the extension activated successfully (which implies URI handler was registered)
-      const ext = vscode.extensions.getExtension("torque.extension");
+      const ext = vscode.extensions.getExtension("quali.torque-ai");
       assert.ok(ext, "Extension should be available");
       assert.strictEqual(ext.isActive, true, "Extension should be active");
 
@@ -110,7 +110,7 @@ suite("MCP and Tool Registration - Extension Activation", () => {
 
     test("SHOULD register all required commands", async () => {
       // Act
-      const ext = vscode.extensions.getExtension("torque.extension");
+      const ext = vscode.extensions.getExtension("quali.torque-ai");
       assert.ok(ext);
       await ext.activate();
 
@@ -144,7 +144,7 @@ suite("MCP and Tool Registration - Extension Activation", () => {
 
       try {
         // Act
-        const ext = vscode.extensions.getExtension("torque.extension");
+        const ext = vscode.extensions.getExtension("quali.torque-ai");
         assert.ok(ext);
         await ext.activate();
 
@@ -192,7 +192,7 @@ suite("MCP and Tool Registration - Extension Activation", () => {
       };
 
       // Act - Test that the extension has the capability to show notifications
-      const ext = vscode.extensions.getExtension("torque.extension");
+      const ext = vscode.extensions.getExtension("quali.torque-ai");
       assert.ok(ext, "Extension should be available");
       assert.strictEqual(ext.isActive, true, "Extension should be active");
 
@@ -245,7 +245,7 @@ suite("MCP and Tool Registration - Extension Activation", () => {
 
       try {
         // Act
-        const ext = vscode.extensions.getExtension("torque.extension");
+        const ext = vscode.extensions.getExtension("quali.torque-ai");
         assert.ok(ext);
         await ext.activate();
 
@@ -273,7 +273,7 @@ suite("MCP and Tool Registration - Extension Activation", () => {
   suite("GIVEN extension lifecycle events", () => {
     test("SHOULD handle deactivation gracefully", async () => {
       // Arrange
-      const ext = vscode.extensions.getExtension("torque.extension");
+      const ext = vscode.extensions.getExtension("quali.torque-ai");
       assert.ok(ext);
       await ext.activate();
 

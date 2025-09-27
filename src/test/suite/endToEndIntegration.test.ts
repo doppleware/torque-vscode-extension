@@ -75,7 +75,7 @@ suite("End-to-End Integration Test", () => {
    */
   test("SHOULD install and activate extension without errors", async () => {
     // Get the extension
-    const ext = vscode.extensions.getExtension("torque.extension");
+    const ext = vscode.extensions.getExtension("quali.torque-ai");
     assert.ok(ext, "Extension should be available");
 
     // Activate the extension

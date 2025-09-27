@@ -19,7 +19,7 @@ The environment context injection feature enables developers to seamlessly bring
 
 **Requirement**: Environment context URLs must be simple, predictable, and work from any source.
 
-- URL format: `vscode://torque.extension/chat/context/add/environment/{SPACE_NAME}/{ENVIRONMENT_ID}`
+- URL format: `vscode://quali.torque-ai/chat/context/add/environment/{SPACE_NAME}/{ENVIRONMENT_ID}`
 - URLs work when clicked from web browsers, email clients, documentation, or messaging apps
 - Special characters in space names and environment IDs are handled automatically
 - URLs are human-readable and can be constructed programmatically or manually

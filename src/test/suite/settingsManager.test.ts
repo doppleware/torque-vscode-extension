@@ -7,7 +7,7 @@ suite("SettingsManager Test Suite", () => {
   let settingsManager: SettingsManager;
 
   setup(async () => {
-    const ext = vscode.extensions.getExtension("torque.extension");
+    const ext = vscode.extensions.getExtension("quali.torque-ai");
     assert.ok(ext);
     await ext.activate();
 

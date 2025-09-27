@@ -570,7 +570,7 @@ export async function activate(context: vscode.ExtensionContext) {
       "torque.testUri",
       async () => {
         const testUri =
-          "vscode://torque.extension/chat/context/add/environment/test-space/test-env";
+          "vscode://quali.torque-ai/chat/context/add/environment/test-space/test-env";
         try {
           await vscode.env.openExternal(vscode.Uri.parse(testUri));
           vscode.window.showInformationMessage(

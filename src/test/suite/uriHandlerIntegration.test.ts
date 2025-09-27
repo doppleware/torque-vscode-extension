@@ -15,7 +15,7 @@ suite("URI Handler Integration Test Suite", () => {
 
   suiteSetup(async () => {
     // Get the extension and ensure it's activated
-    extension = vscode.extensions.getExtension("torque.extension")!;
+    extension = vscode.extensions.getExtension("quali.torque-ai")!;
     assert.ok(extension, "Extension should be available");
 
     if (!extension.isActive) {
@@ -49,7 +49,7 @@ suite("URI Handler Integration Test Suite", () => {
   test("Should handle valid environment context URI", async () => {
     // This tests the actual VS Code URI handler integration
     const testUri = vscode.Uri.parse(
-      "vscode://torque.extension/chat/context/add/environment/test-space/test-env"
+      "vscode://quali.torque-ai/chat/context/add/environment/test-space/test-env"
     );
 
     // Track if any error messages are shown (but allow authentication-related errors in test environment)
@@ -98,7 +98,7 @@ suite("URI Handler Integration Test Suite", () => {
 
   test("Should handle valid webview URI", async () => {
     const testUri = vscode.Uri.parse(
-      "vscode://torque.extension/webview/open?url=https://example.com"
+      "vscode://quali.torque-ai/webview/open?url=https://example.com"
     );
 
     const originalShowErrorMessage = vscode.window.showErrorMessage;
@@ -145,7 +145,7 @@ suite("URI Handler Integration Test Suite", () => {
 
   test("Should handle unmatched routes gracefully", async () => {
     const unmatchedUri = vscode.Uri.parse(
-      "vscode://torque.extension/nonexistent/route"
+      "vscode://quali.torque-ai/nonexistent/route"
     );
 
     let warningShown = false;

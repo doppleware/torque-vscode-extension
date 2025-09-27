@@ -32,8 +32,8 @@ graph TB
     end
 
     subgraph "URL Handlers"
-        URI1["vscode://Quali.torque/chat/context/add/file/incident/:id"]
-        URI2["vscode://Quali.torque/webview/open?url=..."]
+        URI1["vscode://quali.torque-ai/chat/context/add/file/incident/:id"]
+        URI2["vscode://quali.torque-ai/webview/open?url=..."]
     end
 
     %% Main flow
@@ -82,7 +82,7 @@ graph TB
 
 - **Activation**: Triggered on VS Code startup (`onStartupFinished`)
 - **Express Server**: Runs on dynamic port (33100-33199) for external API communication
-- **URI Handler**: Registers `vscode://Quali.torque/` scheme for deep linking
+- **URI Handler**: Registers `vscode://quali.torque-ai/` scheme for deep linking
 - **Configuration Monitoring**: Watches for setting changes and reinitializes services
 
 #### 2. URI Router (`src/uris/UriRouter.ts`)
@@ -118,7 +118,7 @@ graph TB
 
 ### Data Flow
 
-1. **External Trigger**: Web application or CLI calls `vscode://Quali.torque/` URL
+1. **External Trigger**: Web application or CLI calls `vscode://quali.torque-ai/` URL
 2. **URI Processing**: UriRouter matches pattern and extracts parameters
 3. **API Communication**: ApiClient authenticates and fetches data from Torque platform
 4. **File Generation**: Incident data written to temporary JSON file
@@ -134,7 +134,7 @@ graph TB
 
 ## URL Handler Integration
 
-The extension registers the `vscode://Quali.torque/` URI scheme to enable deep linking from external applications, web interfaces, and command-line tools.
+The extension registers the `vscode://quali.torque-ai/` URI scheme to enable deep linking from external applications, web interfaces, and command-line tools.
 
 ### Usage Examples
 
@@ -142,10 +142,10 @@ The extension registers the `vscode://Quali.torque/` URI scheme to enable deep l
 
 ```bash
 # From command line
-open "vscode://Quali.torque/chat/context/add/file/incident/abc123"
+open "vscode://quali.torque-ai/chat/context/add/file/incident/abc123"
 
 # From web application
-window.location.href = "vscode://Quali.torque/chat/context/add/file/incident/abc123"
+window.location.href = "vscode://quali.torque-ai/chat/context/add/file/incident/abc123"
 ```
 
 This will:
@@ -159,7 +159,7 @@ This will:
 
 ```bash
 # Open webview with domain validation
-open "vscode://Quali.torque/webview/open?url=https://app.torque.example.com/dashboard"
+open "vscode://quali.torque-ai/webview/open?url=https://app.torque.example.com/dashboard"
 ```
 
 This will:
@@ -176,7 +176,7 @@ This will:
 ```javascript
 // Check if VS Code is available
 function openInVSCode(incidentId) {
-  const url = `vscode://Quali.torque/chat/context/add/file/incident/${incidentId}`;
+  const url = `vscode://quali.torque-ai/chat/context/add/file/incident/${incidentId}`;
 
   // Attempt to open in VS Code
   window.location.href = url;
@@ -200,7 +200,7 @@ if [ -z "$INCIDENT_ID" ]; then
 fi
 
 echo "Opening incident $INCIDENT_ID in VS Code..."
-open "vscode://Quali.torque/chat/context/add/file/incident/$INCIDENT_ID"
+open "vscode://quali.torque-ai/chat/context/add/file/incident/$INCIDENT_ID"
 ```
 
 #### API Response Integration
@@ -212,7 +212,7 @@ open "vscode://Quali.torque/chat/context/add/file/incident/$INCIDENT_ID"
     "title": "High Memory Usage Alert",
     "actions": {
       "analyze_in_vscode": {
-        "url": "vscode://Quali.torque/chat/context/add/file/incident/abc123",
+        "url": "vscode://quali.torque-ai/chat/context/add/file/incident/abc123",
         "label": "Analyze in VS Code"
       }
     }

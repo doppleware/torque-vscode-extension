@@ -28,7 +28,7 @@ suite("MCP and Tool Registration - Setup Command Integration", () => {
 
   suiteSetup(async () => {
     // Get the extension and activate it
-    const ext = vscode.extensions.getExtension("torque.extension");
+    const ext = vscode.extensions.getExtension("quali.torque-ai");
     assert.ok(ext, "Extension should be available");
 
     await ext.activate();

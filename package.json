@@ -1,9 +1,9 @@
 {
-  "name": "extension",
+  "name": "torque-ai",
   "displayName": "Torque AI",
   "description": "Autonomous identification, root cause analysis and remediation of code and infrastructure issues",
-  "version": "0.6.0",
-  "publisher": "torque",
+  "version": "0.0.1",
+  "publisher": "quali",
   "icon": "logo.png",
   "engines": {
     "vscode": "^1.104.0"
@@ -31,7 +31,7 @@
   ],
   "activationEvents": [
     "onStartupFinished",
-    "onUri:torque"
+    "onUri:quali.torque-ai"
   ],
   "main": "./out/extension.js",
   "contributes": {
