@@ -65,6 +65,12 @@
         "title": "Test URI Handler",
         "category": "Torque",
         "icon": "$(debug)"
+      },
+      {
+        "command": "torque.resetFirstTime",
+        "title": "Reset First Time State",
+        "category": "Torque",
+        "icon": "$(refresh)"
       }
     ],
     "mcpServerDefinitionProviders": [

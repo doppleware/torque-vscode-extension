@@ -43,27 +43,108 @@ const isExtensionConfigured = async (
 };
 
 /**
- * Shows setup notification to user if not configured
+ * Checks if this is the first time the extension is being activated
+ */
+const isFirstTimeInstallation = (context: vscode.ExtensionContext): boolean => {
+  const hasBeenActivatedBefore = context.globalState.get<boolean>(
+    "hasBeenActivatedBefore",
+    false
+  );
+  return !hasBeenActivatedBefore;
+};
+
+/**
+ * Marks the extension as having been activated before
+ */
+const markAsActivatedBefore = async (
+  context: vscode.ExtensionContext
+): Promise<void> => {
+  await context.globalState.update("hasBeenActivatedBefore", true);
+  logger.debug("Extension marked as activated before");
+};
+
+/**
+ * Shows first-time installation popup or regular setup notification
  */
 const showSetupNotificationIfNeeded = async (
-  settingsManager: SettingsManager
+  settingsManager: SettingsManager,
+  context: vscode.ExtensionContext
 ): Promise<void> => {
   const isConfigured = await isExtensionConfigured(settingsManager);
+  const isFirstTime = isFirstTimeInstallation(context);
+
+  // Debug logging
+  logger.info(
+    `Setup notification check: isConfigured=${isConfigured}, isFirstTime=${isFirstTime}`
+  );
 
   if (!isConfigured) {
-    logger.info("Extension not configured, showing setup notification");
-    const result = await vscode.window.showInformationMessage(
-      "🚀 Torque AI extension is installed but not configured. Set up your API connection to enable MCP tools.",
-      "Configure Torque AI",
-      "Later"
+    if (isFirstTime) {
+      logger.info("First-time installation detected, showing welcome popup");
+      const result = await vscode.window.showInformationMessage(
+        "The Torque extension has been installed, click below to configure it",
+        "Configure",
+        "Later"
+      );
+
+      if (result === "Configure") {
+        logger.info(
+          "User selected to configure Torque AI from first-time popup"
+        );
+        await vscode.commands.executeCommand("torque.setup");
+      } else {
+        logger.info("User chose to skip first-time configuration");
+      }
+
+      // Mark as activated regardless of user choice
+      await markAsActivatedBefore(context);
+    } else {
+      logger.info("Extension not configured, showing setup notification");
+      const result = await vscode.window.showInformationMessage(
+        "🚀 Torque AI extension is installed but not configured. Set up your API connection to enable MCP tools.",
+        "Configure Torque AI",
+        "Later"
+      );
+
+      if (result === "Configure Torque AI") {
+        logger.info("User selected to configure Torque AI");
+        await vscode.commands.executeCommand("torque.setup");
+      } else {
+        logger.info("User chose to skip configuration");
+      }
+    }
+  } else if (isFirstTime) {
+    // Extension is configured and this is first time - show welcome message for configured users
+    logger.info(
+      "First-time installation with existing configuration detected, showing welcome"
     );
 
-    if (result === "Configure Torque AI") {
-      logger.info("User selected to configure Torque AI");
-      await vscode.commands.executeCommand("torque.setup");
-    } else {
-      logger.info("User chose to skip configuration");
+    const result = await vscode.window.showInformationMessage(
+      "🎉 Welcome to Torque AI! Your extension is already configured and ready to use.",
+      "Open Chat",
+      "Check Status"
+    );
+
+    if (result === "Open Chat") {
+      logger.info("User selected to open chat from first-time welcome");
+      try {
+        await vscode.commands.executeCommand("workbench.action.chat.open");
+      } catch {
+        vscode.window.showInformationMessage(
+          "Could not open chat automatically. Please open Copilot Chat manually and look for Torque tools."
+        );
+      }
+    } else if (result === "Check Status") {
+      logger.info("User selected to check status from first-time welcome");
+      await vscode.commands.executeCommand("torque.checkMcpStatus");
     }
+
+    // Mark as activated after showing welcome
+    await markAsActivatedBefore(context);
+  } else {
+    logger.info(
+      "Extension already configured and not first time - no notification needed"
+    );
   }
 };
 
@@ -240,7 +321,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Show setup notification if not configured (with delay to avoid startup noise)
   setTimeout(() => {
-    void showSetupNotificationIfNeeded(settingsManager);
+    void showSetupNotificationIfNeeded(settingsManager, context);
   }, 2000);
 
   // Language Model Tools are automatically registered from package.json
@@ -588,6 +669,38 @@ export async function activate(context: vscode.ExtensionContext) {
     logger.warn("Command torque.testUri already registered, skipping");
   }
 
+  // Register reset first-time state command for testing
+  let resetFirstTimeCommand: vscode.Disposable | undefined;
+  try {
+    resetFirstTimeCommand = vscode.commands.registerCommand(
+      "torque.resetFirstTime",
+      async () => {
+        // Reset first-time state
+        await context.globalState.update("hasBeenActivatedBefore", false);
+
+        // Clear configuration to test full onboarding flow
+        await settingsManager.setSetting("url", "");
+        await settingsManager.setSetting("token", "");
+
+        logger.info(
+          "Reset first-time state and cleared configuration - extension will show full onboarding on next activation"
+        );
+        vscode.window
+          .showInformationMessage(
+            "First-time state and configuration reset. Reload the window to test the full onboarding flow.",
+            "Reload Window"
+          )
+          .then((result) => {
+            if (result === "Reload Window") {
+              vscode.commands.executeCommand("workbench.action.reloadWindow");
+            }
+          });
+      }
+    );
+  } catch {
+    logger.warn("Command torque.resetFirstTime already registered, skipping");
+  }
+
   context.subscriptions.push(configChangeListener);
   if (setupCommand) {
     context.subscriptions.push(setupCommand);
@@ -604,16 +717,15 @@ export async function activate(context: vscode.ExtensionContext) {
   if (testUriCommand) {
     context.subscriptions.push(testUriCommand);
   }
+  if (resetFirstTimeCommand) {
+    context.subscriptions.push(resetFirstTimeCommand);
+  }
   const uriHandler = vscode.window.registerUriHandler({
     handleUri: async (uri) => {
       logger.info(`[URI Handler] Received URI: ${uri.toString()}`);
       logger.info(
         `[URI Handler] URI scheme: ${uri.scheme}, authority: ${uri.authority}, path: ${uri.path}, query: ${uri.query}`
       );
-
-      // Also log to console for immediate debugging
-      // eslint-disable-next-line no-console
-      console.log(`[Torque URI] Received: ${uri.toString()}`);
 
       try {
         const handled = await uriRouter.handleUri(uri);
@@ -645,8 +757,6 @@ export async function activate(context: vscode.ExtensionContext) {
   });
 
   logger.info(`[Extension] URI handler registered successfully`);
-  // eslint-disable-next-line no-console
-  console.log(`[Torque Extension] URI handler registered for scheme: torque`);
 
   context.subscriptions.push(uriHandler);
 
