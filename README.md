@@ -32,7 +32,7 @@ graph TB
     end
 
     subgraph "URL Handlers"
-        URI1["vscode://quali.torque-ai/chat/context/add/file/incident/:id"]
+        URI1["vscode://quali.torque-ai/chat/context/add/environment/{SPACE_NAME}/{ENVIRONMENT_ID}"]
         URI2["vscode://quali.torque-ai/webview/open?url=..."]
     end
 
@@ -45,7 +45,7 @@ graph TB
     %% URI handling
     URI1 --> URI
     URI2 --> URI
-    URI --> |"/chat/context/add/file/incident/:id"| API
+    URI --> |"/add/environment/{SPACE_NAME}/{ENVIRONMENT_ID}"| API
     URI --> |"/webview/open"| WEB
 
     %% API communication
@@ -60,7 +60,7 @@ graph TB
 
     %% Express server endpoints
     EXP --> |"/api/torque/about"| API
-    EXP --> |"/api/torque/chat/context/add/file/incident/:id"| API
+    EXP --> |"/add/environment/{SPACE_NAME}/{ENVIRONMENT_ID}"| API
 
     %% VS Code integration
     WEB --> CMD
@@ -113,7 +113,7 @@ graph TB
 #### 5. Express Server Integration
 
 - **Health Endpoint**: `/api/torque/about` - Extension and workspace information
-- **Chat Context API**: `/api/torque/chat/context/add/file/incident/:id` - External incident attachment
+- **Chat Context API**: `/add/environment/{SPACE_NAME}/{ENVIRONMENT_ID}` - External environment attachment
 - **CORS Support**: Cross-origin requests for web integration
 
 ### Data Flow
@@ -121,7 +121,7 @@ graph TB
 1. **External Trigger**: Web application or CLI calls `vscode://quali.torque-ai/` URL
 2. **URI Processing**: UriRouter matches pattern and extracts parameters
 3. **API Communication**: ApiClient authenticates and fetches data from Torque platform
-4. **File Generation**: Incident data written to temporary JSON file
+4. **File Generation**: Environment data written to temporary JSON file
 5. **IDE Integration**: VS Code commands open chat and attach file context
 6. **User Notification**: Success/error feedback via VS Code notifications
 
@@ -138,7 +138,7 @@ The extension registers the `vscode://quali.torque-ai/` URI scheme to enable dee
 
 ### Usage Examples
 
-#### 1. Attach Incident to Chat Context
+#### 1. Attach Environment Details to Chat Context
 
 ```bash
 # From command line
@@ -150,10 +150,10 @@ window.location.href = "vscode://quali.torque-ai/chat/context/add/file/incident/
 
 This will:
 
-1. Fetch incident data from the Torque API using the provided incident ID
-2. Generate a temporary JSON file with the incident details
+1. Fetch environment data from the Torque API using the provided incident ID
+2. Generate a temporary JSON file with the environment details
 3. Automatically open VS Code's chat interface
-4. Attach the incident file to the chat context for AI analysis
+4. Attach the environment file to the chat context for AI analysis
 
 #### 2. Open Secure Webview
 
@@ -176,7 +176,7 @@ This will:
 ```javascript
 // Check if VS Code is available
 function openInVSCode(incidentId) {
-  const url = `vscode://quali.torque-ai/chat/context/add/file/incident/${incidentId}`;
+  const url = `vscode://quali.torque-ai/chat/context/add/environment/{SPACE_NAME}/{ENVIRONMENT_ID}`;
 
   // Attempt to open in VS Code
   window.location.href = url;
@@ -185,38 +185,6 @@ function openInVSCode(incidentId) {
   setTimeout(() => {
     showVSCodeInstructions(url);
   }, 1000);
-}
-```
-
-#### CLI Tool Integration
-
-```bash
-#!/bin/bash
-# torque-incident-analyze.sh
-INCIDENT_ID=$1
-if [ -z "$INCIDENT_ID" ]; then
-    echo "Usage: $0 <incident-id>"
-    exit 1
-fi
-
-echo "Opening incident $INCIDENT_ID in VS Code..."
-open "vscode://quali.torque-ai/chat/context/add/file/incident/$INCIDENT_ID"
-```
-
-#### API Response Integration
-
-```json
-{
-  "incident": {
-    "id": "abc123",
-    "title": "High Memory Usage Alert",
-    "actions": {
-      "analyze_in_vscode": {
-        "url": "vscode://quali.torque-ai/chat/context/add/file/incident/abc123",
-        "label": "Analyze in VS Code"
-      }
-    }
-  }
 }
 ```
 
@@ -241,13 +209,10 @@ The URL handler provides comprehensive error handling:
 
 This extension contributes the following settings:
 
-| Key                        | Type    | Default                  | Description                 |
-| -------------------------- | ------- | ------------------------ | --------------------------- |
-| `torque.url`               | string  | `https://localhost:5051` | API URL                     |
-| `torque.token`             | string  | -                        | API token                   |
-| `torque.login`             | string  | -                        | User login                  |
-| `torque.password`          | string  | -                        | User password               |
-| `torque.copySettingsToMcp` | boolean | false                    | Copy settings to MCP server |
+| Key            | Type   | Default                  | Description |
+| -------------- | ------ | ------------------------ | ----------- |
+| `torque.url`   | string | `https://localhost:5051` | API URL     |
+| `torque.token` | string | -                        | API token   |
 
 ## Build
 
