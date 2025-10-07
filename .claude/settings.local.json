@@ -15,7 +15,8 @@
       "Bash(npm run lint:*)",
       "Bash(npx:*)",
       "Bash(npm run compile:dev:*)",
-      "Bash(npm run build:dev:*)"
+      "Bash(npm run build:dev:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

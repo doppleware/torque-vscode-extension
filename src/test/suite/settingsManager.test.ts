@@ -23,36 +23,35 @@ suite("SettingsManager Test Suite", () => {
       logPath: "/tmp/logs",
       globalState: {
         get: () => undefined,
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
+
         update: async () => {},
         keys: () => [],
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
+
         setKeysForSync: () => {}
       },
       workspaceState: {
         get: () => undefined,
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
+
         update: async () => {},
         keys: () => [],
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
+
         setKeysForSync: () => {}
       },
       secrets: {
-        // eslint-disable-next-line @typescript-eslint/require-await
         get: async () => undefined,
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
+
         store: async () => {},
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
+
         delete: async () => {}
       },
       subscriptions: [],
       globalStorageUri: vscode.Uri.file("/tmp"),
       logUri: vscode.Uri.file("/tmp"),
       storageUri: vscode.Uri.file("/tmp"),
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
+
       environmentVariableCollection: {} as any,
       extensionMode: vscode.ExtensionMode.Test,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
+
       languageModelAccessInformation: {} as any
     } as unknown as vscode.ExtensionContext;
 

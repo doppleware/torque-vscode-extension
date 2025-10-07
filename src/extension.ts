@@ -280,6 +280,92 @@ const enableRequiredSettings = async (): Promise<void> => {
 };
 
 /**
+ * Ensures GitHub Copilot instruction file exists and setting is enabled
+ */
+const registerAgentInstructions = async (
+  context: vscode.ExtensionContext
+): Promise<void> => {
+  try {
+    logger.debug("Setting up Torque AI agent instructions");
+
+    // Enable the GitHub Copilot instruction files setting
+    const config = vscode.workspace.getConfiguration(
+      "github.copilot.chat.codeGeneration"
+    );
+    const useInstructionFiles = config.get<boolean>("useInstructionFiles");
+
+    if (!useInstructionFiles) {
+      await config.update(
+        "useInstructionFiles",
+        true,
+        vscode.ConfigurationTarget.Workspace
+      );
+      logger.info("Enabled GitHub Copilot instruction files setting");
+    }
+
+    // Ensure .github directory and copilot-instructions.md exist
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (!workspaceFolders || workspaceFolders.length === 0) {
+      logger.warn("No workspace folder found, skipping instruction file setup");
+      return;
+    }
+
+    const workspaceRoot = workspaceFolders[0].uri;
+    const githubDir = vscode.Uri.joinPath(workspaceRoot, ".github");
+    const instructionFile = vscode.Uri.joinPath(
+      githubDir,
+      "copilot-instructions.md"
+    );
+
+    // Check if instruction file already exists
+    try {
+      await vscode.workspace.fs.stat(instructionFile);
+      logger.debug("GitHub Copilot instruction file already exists");
+    } catch {
+      // File doesn't exist, create it with Torque instructions
+      logger.info("Creating GitHub Copilot instruction file");
+
+      // Ensure .github directory exists
+      try {
+        await vscode.workspace.fs.createDirectory(githubDir);
+      } catch {
+        // Directory might already exist, ignore error
+      }
+
+      // Read the Torque instruction template from the extension directory
+      const extensionPath = context.extensionUri;
+      const templateFile = vscode.Uri.joinPath(
+        extensionPath,
+        "docs",
+        "torque_dev_instruction.md"
+      );
+
+      try {
+        const content = await vscode.workspace.fs.readFile(templateFile);
+        await vscode.workspace.fs.writeFile(instructionFile, content);
+        logger.info(
+          "Created GitHub Copilot instruction file from Torque template"
+        );
+      } catch (error) {
+        logger.warn(
+          "Could not copy Torque instruction template to Copilot instruction file",
+          {
+            error: error instanceof Error ? error.message : String(error)
+          }
+        );
+      }
+    }
+
+    logger.debug("Agent instructions setup completed");
+  } catch (error) {
+    logger.warn("Failed to set up agent instructions", {
+      error: error instanceof Error ? error.message : String(error)
+    });
+    // Instruction setup is not critical, silently continue
+  }
+};
+
+/**
  * Shows success message and guides user to next steps
  */
 const showMcpSetupSuccessMessage = async (): Promise<void> => {
@@ -318,6 +404,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Initialize client and MCP server if configured
   await initializeClient(settingsManager, true);
+
+  // Register agent instructions for VS Code Copilot
+  await registerAgentInstructions(context);
 
   // Show setup notification if not configured (with delay to avoid startup noise)
   setTimeout(() => {
@@ -701,6 +790,96 @@ export async function activate(context: vscode.ExtensionContext) {
     logger.warn("Command torque.resetFirstTime already registered, skipping");
   }
 
+  // Register create Torque Blueprint command
+  let createBlueprintCommand: vscode.Disposable | undefined;
+  try {
+    createBlueprintCommand = vscode.commands.registerCommand(
+      "torque.createBlueprint",
+      async () => {
+        const workspaceFolders = vscode.workspace.workspaceFolders;
+        if (!workspaceFolders || workspaceFolders.length === 0) {
+          vscode.window.showErrorMessage(
+            "Please open a workspace folder before creating a Torque Blueprint"
+          );
+          return;
+        }
+
+        // Prompt for filename
+        const filename = await vscode.window.showInputBox({
+          prompt: "Enter blueprint filename",
+          placeHolder: "blueprint.yaml",
+          validateInput: (value) => {
+            if (!value) {
+              return "Filename is required";
+            }
+            if (!value.endsWith(".yaml") && !value.endsWith(".yml")) {
+              return "Filename must end with .yaml or .yml";
+            }
+            return undefined;
+          }
+        });
+
+        if (!filename) {
+          return;
+        }
+
+        // Create blueprint content
+        const blueprintContent = `# yaml-language-server: $schema=https://raw.githubusercontent.com/QualiTorque/torque-vs-code-extensions/master/client/schemas/blueprint-spec2-schema.json
+spec_version: 2
+description: ''
+inputs:
+grains:
+`;
+
+        // Create file in workspace root
+        const workspaceRoot = workspaceFolders[0].uri;
+        const blueprintUri = vscode.Uri.joinPath(workspaceRoot, filename);
+
+        try {
+          // Check if file already exists
+          try {
+            await vscode.workspace.fs.stat(blueprintUri);
+            const overwrite = await vscode.window.showWarningMessage(
+              `File ${filename} already exists. Overwrite?`,
+              "Yes",
+              "No"
+            );
+            if (overwrite !== "Yes") {
+              return;
+            }
+          } catch {
+            // File doesn't exist, continue
+          }
+
+          // Write the file
+          await vscode.workspace.fs.writeFile(
+            blueprintUri,
+            Buffer.from(blueprintContent, "utf8")
+          );
+
+          // Open the file
+          const document =
+            await vscode.workspace.openTextDocument(blueprintUri);
+          await vscode.window.showTextDocument(document);
+
+          vscode.window.showInformationMessage(
+            `Torque Blueprint created: ${filename}`
+          );
+          logger.info(`Created Torque Blueprint: ${filename}`);
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          vscode.window.showErrorMessage(
+            `Failed to create blueprint: ${errorMessage}`
+          );
+          logger.error("Failed to create Torque Blueprint", error as Error);
+        }
+      }
+    );
+  } catch {
+    logger.warn("Command torque.createBlueprint already registered, skipping");
+  }
+
   context.subscriptions.push(configChangeListener);
   if (setupCommand) {
     context.subscriptions.push(setupCommand);
@@ -719,6 +898,9 @@ export async function activate(context: vscode.ExtensionContext) {
   }
   if (resetFirstTimeCommand) {
     context.subscriptions.push(resetFirstTimeCommand);
+  }
+  if (createBlueprintCommand) {
+    context.subscriptions.push(createBlueprintCommand);
   }
   const uriHandler = vscode.window.registerUriHandler({
     handleUri: async (uri) => {

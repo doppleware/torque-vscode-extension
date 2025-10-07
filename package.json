@@ -71,8 +71,22 @@
         "title": "Reset First Time State",
         "category": "Torque",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "torque.createBlueprint",
+        "title": "Torque Blueprint",
+        "category": "Torque",
+        "icon": "$(file-add)"
       }
     ],
+    "menus": {
+      "file/newFile": [
+        {
+          "command": "torque.createBlueprint",
+          "group": "file"
+        }
+      ]
+    },
     "mcpServerDefinitionProviders": [
       {
         "id": "torqueMcpProvider",
@@ -101,6 +115,16 @@
             "environment_id"
           ]
         }
+      }
+    ],
+    "fileTemplates": [
+      {
+        "id": "torque.blueprint",
+        "label": "Torque Blueprint",
+        "description": "Create a new Torque Blueprint YAML file",
+        "defaultName": "blueprint.yaml",
+        "icon": "$(file-code)",
+        "template": "# yaml-language-server: $schema=https://raw.githubusercontent.com/QualiTorque/torque-vs-code-extensions/master/client/schemas/blueprint-spec2-schema.json\nspec_version: 2\ndescription: ''\ninputs:\ngrains:\n"
       }
     ]
   },
