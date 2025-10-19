@@ -220,7 +220,7 @@ suite("Blueprint CodeLens Provider Test Suite", () => {
       );
     });
 
-    test("SHOULD show default space when active space is not set", async () => {
+    test("SHOULD show default space with '(Default)' indicator when active space is not set", async () => {
       // Arrange - Set only default space
       const defaultSpace = "my-default-space";
       await settingsManager.setSetting(
@@ -243,10 +243,25 @@ suite("Blueprint CodeLens Provider Test Suite", () => {
         codeLenses[0].command?.title.includes(defaultSpace),
         `CodeLens should display default space: ${defaultSpace}`
       );
+      assert.ok(
+        codeLenses[0].command?.title.includes("(Default)"),
+        "CodeLens should indicate it's using the default space"
+      );
     });
 
-    test.skip("SHOULD show 'Not Set' when no space is configured", async () => {
-      // Arrange - No spaces configured
+    test("SHOULD show 'Not Set' when no space is configured", async () => {
+      // Arrange - Explicitly clear both spaces to ensure nothing is configured
+      await settingsManager.setSetting(
+        "activeSpace",
+        undefined,
+        vscode.ConfigurationTarget.Workspace
+      );
+      await settingsManager.setSetting(
+        "space",
+        undefined,
+        vscode.ConfigurationTarget.Global
+      );
+
       const doc = await vscode.workspace.openTextDocument({
         language: "yaml",
         content: BLUEPRINT_TEMPLATE
@@ -260,6 +275,10 @@ suite("Blueprint CodeLens Provider Test Suite", () => {
       assert.ok(
         codeLenses[0].command?.title.includes("Not Set"),
         "CodeLens should display 'Not Set' when no space is configured"
+      );
+      assert.ok(
+        !codeLenses[0].command?.title.includes("(Default)"),
+        "CodeLens should not show '(Default)' when no space is configured"
       );
     });
 
@@ -296,6 +315,10 @@ suite("Blueprint CodeLens Provider Test Suite", () => {
       assert.ok(
         !codeLenses[0].command?.title.includes(defaultSpace),
         "CodeLens should not show default space when active space is set"
+      );
+      assert.ok(
+        !codeLenses[0].command?.title.includes("(Default)"),
+        "CodeLens should not show '(Default)' indicator when active space overrides default"
       );
     });
   });

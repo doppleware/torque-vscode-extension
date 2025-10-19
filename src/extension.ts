@@ -9,6 +9,7 @@ import {
   showSetupNotificationIfNeeded,
   registerSetupCommand,
   registerSetActiveSpaceCommand,
+  registerSetDefaultSpaceCommand,
   registerResetFirstTimeCommand
 } from "./domains/setup";
 import { handleEnvironmentContextUrl } from "./domains/environment-context";
@@ -584,6 +585,12 @@ export async function activate(context: vscode.ExtensionContext) {
     () => apiClient
   );
 
+  // Register set default space command
+  const setDefaultSpaceCommand = registerSetDefaultSpaceCommand(
+    settingsManager,
+    () => apiClient
+  );
+
   // Register test URI command for debugging
   let testUriCommand: vscode.Disposable | undefined;
   try {
@@ -625,6 +632,9 @@ export async function activate(context: vscode.ExtensionContext) {
   }
   if (setActiveSpaceCommand) {
     context.subscriptions.push(setActiveSpaceCommand);
+  }
+  if (setDefaultSpaceCommand) {
+    context.subscriptions.push(setDefaultSpaceCommand);
   }
   if (triggerMcpDiscoveryCommand) {
     context.subscriptions.push(triggerMcpDiscoveryCommand);

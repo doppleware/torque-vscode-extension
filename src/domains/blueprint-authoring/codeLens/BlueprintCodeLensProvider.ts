@@ -41,12 +41,16 @@ export class BlueprintCodeLensProvider implements vscode.CodeLensProvider {
     }
 
     // Get the active space (with fallback to default space)
-    const activeSpace = await this.getActiveSpace();
+    const { spaceName, isDefault } = await this.getActiveSpace();
 
     // Create CodeLens at the top of the file (line 0)
     const topOfDocument = new vscode.Range(0, 0, 0, 0);
+    const title = isDefault
+      ? `Active Space: ${spaceName} (Default)`
+      : `Active Space: ${spaceName}`;
+
     const codeLens = new vscode.CodeLens(topOfDocument, {
-      title: `Active Space: ${activeSpace}`,
+      title,
       command: "torque.setActiveSpace",
       tooltip: "Click to change the active Torque space for this workspace"
     });
@@ -84,24 +88,27 @@ export class BlueprintCodeLensProvider implements vscode.CodeLensProvider {
   /**
    * Get the active space, with fallback to default space
    */
-  private async getActiveSpace(): Promise<string> {
+  private async getActiveSpace(): Promise<{
+    spaceName: string;
+    isDefault: boolean;
+  }> {
     // Try to get workspace-specific active space first
     const activeSpace =
       await this.settingsManager.getSetting<string>("activeSpace");
 
     if (activeSpace) {
-      return activeSpace;
+      return { spaceName: activeSpace, isDefault: false };
     }
 
     // Fall back to default space
     const defaultSpace = await this.settingsManager.getSetting<string>("space");
 
     if (defaultSpace) {
-      return defaultSpace;
+      return { spaceName: defaultSpace, isDefault: true };
     }
 
     // No space configured
-    return "Not Set";
+    return { spaceName: "Not Set", isDefault: false };
   }
 
   /**

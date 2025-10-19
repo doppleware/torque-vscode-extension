@@ -66,6 +66,12 @@
         "icon": "$(folder)"
       },
       {
+        "command": "torque.setDefaultSpace",
+        "title": "Set Default Torque Space",
+        "category": "Torque",
+        "icon": "$(folder-library)"
+      },
+      {
         "command": "torque.triggerMcpDiscovery",
         "title": "Refresh MCP Connection",
         "category": "Torque",

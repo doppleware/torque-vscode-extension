@@ -23,3 +23,15 @@ export interface Space {
   name: string;
   description?: string;
 }
+
+export interface Repository {
+  name: string;
+  repository_url?: string;
+  branch?: string;
+  repository_type?: string;
+  status?: string;
+  last_synced?: string;
+  credentials?: string;
+  space_name?: string | null;
+  eac_auto_registration?: boolean;
+}
