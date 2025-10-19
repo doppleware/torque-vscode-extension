@@ -17,7 +17,9 @@
       "Bash(npm run compile:dev:*)",
       "Bash(npm run build:dev:*)",
       "Bash(cat:*)",
-      "Bash(npm audit:*)"
+      "Bash(npm audit:*)",
+      "Bash(tree:*)",
+      "Bash(npm test:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,5 +1,5 @@
 import * as assert from "assert";
-import { ApiClient } from "../../api/ApiClient";
+import { ApiClient } from "../../../api/ApiClient";
 
 suite("ApiClient Test Suite", () => {
   let apiClient: ApiClient;

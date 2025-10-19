@@ -6,7 +6,7 @@
   "publisher": "quali",
   "icon": "logo.png",
   "engines": {
-    "vscode": "^1.104.0"
+    "vscode": "^1.105.0"
   },
   "keywords": [
     "PlaformEngineering",
@@ -35,12 +35,35 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "configuration": {
+      "title": "Torque AI",
+      "properties": {
+        "torque-ai.space": {
+          "type": "string",
+          "default": null,
+          "description": "Default Torque space to use for operations",
+          "scope": "resource"
+        },
+        "torque-ai.activeSpace": {
+          "type": "string",
+          "default": null,
+          "description": "Currently active Torque space for the workspace. If not set, the default space will be used.",
+          "scope": "resource"
+        }
+      }
+    },
     "commands": [
       {
         "command": "torque.setup",
         "title": "Configure Torque AI",
         "category": "Torque",
         "icon": "$(gear)"
+      },
+      {
+        "command": "torque.setActiveSpace",
+        "title": "Set Active Torque Space",
+        "category": "Torque",
+        "icon": "$(folder)"
       },
       {
         "command": "torque.triggerMcpDiscovery",
@@ -167,7 +190,7 @@
     "@types/mocha": "^10.0.10",
     "@types/proxyquire": "^1.3.31",
     "@types/sinon": "^17.0.4",
-    "@types/vscode": "^1.105.0",
+    "@types/vscode": "^1.104.0",
     "@vscode/test-cli": "^0.0.11",
     "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.6.2",

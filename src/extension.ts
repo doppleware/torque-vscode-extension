@@ -2,12 +2,23 @@ import express from "express";
 import net from "net";
 import vscode from "vscode";
 import { ApiClient } from "./api/ApiClient";
-import { updateMcpServer } from "./registerMcpServer";
-import { SettingsManager } from "./SettingsManager";
-import { handleEnvironmentContextUrl } from "./uris/handlers/environmentContext";
+import { updateMcpServer } from "./domains/mcp";
+import {
+  SettingsManager,
+  isExtensionConfigured,
+  showSetupNotificationIfNeeded,
+  registerSetupCommand,
+  registerSetActiveSpaceCommand,
+  registerResetFirstTimeCommand
+} from "./domains/setup";
+import { handleEnvironmentContextUrl } from "./domains/environment-context";
 import { openWebviewWithUrl } from "./uris/handlers/webview";
 import { UriRouter } from "./uris/UriRouter";
 import { logger } from "./utils/Logger";
+import {
+  registerCreateBlueprintCommand,
+  BlueprintCodeLensProvider
+} from "./domains/blueprint-authoring";
 
 const START_PORT = 33100;
 const END_PORT = 33199;
@@ -26,127 +37,6 @@ let mcpServerDisposable: {
   checkHealth(): Promise<McpHealthResult>;
 } | null = null;
 let isActivated = false;
-
-/**
- * Checks if the extension is properly configured
- */
-const isExtensionConfigured = async (
-  settingsManager: SettingsManager
-): Promise<boolean> => {
-  const url = await settingsManager.getSetting<string>("url");
-  const token = await settingsManager.getSetting<string>("token");
-  const isConfigured = !!(url && token);
-  logger.debug(
-    `Extension configuration check: ${isConfigured ? "configured" : "not configured"}`
-  );
-  return isConfigured;
-};
-
-/**
- * Checks if this is the first time the extension is being activated
- */
-const isFirstTimeInstallation = (context: vscode.ExtensionContext): boolean => {
-  const hasBeenActivatedBefore = context.globalState.get<boolean>(
-    "hasBeenActivatedBefore",
-    false
-  );
-  return !hasBeenActivatedBefore;
-};
-
-/**
- * Marks the extension as having been activated before
- */
-const markAsActivatedBefore = async (
-  context: vscode.ExtensionContext
-): Promise<void> => {
-  await context.globalState.update("hasBeenActivatedBefore", true);
-  logger.debug("Extension marked as activated before");
-};
-
-/**
- * Shows first-time installation popup or regular setup notification
- */
-const showSetupNotificationIfNeeded = async (
-  settingsManager: SettingsManager,
-  context: vscode.ExtensionContext
-): Promise<void> => {
-  const isConfigured = await isExtensionConfigured(settingsManager);
-  const isFirstTime = isFirstTimeInstallation(context);
-
-  // Debug logging
-  logger.info(
-    `Setup notification check: isConfigured=${isConfigured}, isFirstTime=${isFirstTime}`
-  );
-
-  if (!isConfigured) {
-    if (isFirstTime) {
-      logger.info("First-time installation detected, showing welcome popup");
-      const result = await vscode.window.showInformationMessage(
-        "The Torque extension has been installed, click below to configure it",
-        "Configure",
-        "Later"
-      );
-
-      if (result === "Configure") {
-        logger.info(
-          "User selected to configure Torque AI from first-time popup"
-        );
-        await vscode.commands.executeCommand("torque.setup");
-      } else {
-        logger.info("User chose to skip first-time configuration");
-      }
-
-      // Mark as activated regardless of user choice
-      await markAsActivatedBefore(context);
-    } else {
-      logger.info("Extension not configured, showing setup notification");
-      const result = await vscode.window.showInformationMessage(
-        "🚀 Torque AI extension is installed but not configured. Set up your API connection to enable MCP tools.",
-        "Configure Torque AI",
-        "Later"
-      );
-
-      if (result === "Configure Torque AI") {
-        logger.info("User selected to configure Torque AI");
-        await vscode.commands.executeCommand("torque.setup");
-      } else {
-        logger.info("User chose to skip configuration");
-      }
-    }
-  } else if (isFirstTime) {
-    // Extension is configured and this is first time - show welcome message for configured users
-    logger.info(
-      "First-time installation with existing configuration detected, showing welcome"
-    );
-
-    const result = await vscode.window.showInformationMessage(
-      "🎉 Welcome to Torque AI! Your extension is already configured and ready to use.",
-      "Open Chat",
-      "Check Status"
-    );
-
-    if (result === "Open Chat") {
-      logger.info("User selected to open chat from first-time welcome");
-      try {
-        await vscode.commands.executeCommand("workbench.action.chat.open");
-      } catch {
-        vscode.window.showInformationMessage(
-          "Could not open chat automatically. Please open Copilot Chat manually and look for Torque tools."
-        );
-      }
-    } else if (result === "Check Status") {
-      logger.info("User selected to check status from first-time welcome");
-      await vscode.commands.executeCommand("torque.checkMcpStatus");
-    }
-
-    // Mark as activated after showing welcome
-    await markAsActivatedBefore(context);
-  } else {
-    logger.info(
-      "Extension already configured and not first time - no notification needed"
-    );
-  }
-};
 
 const getBaseDomain = (url: string): string => {
   const hostname = new URL(url).hostname;
@@ -457,12 +347,26 @@ export async function activate(context: vscode.ExtensionContext) {
     }
   });
 
+  // Register Blueprint CodeLens Provider
+  const blueprintCodeLensProvider = new BlueprintCodeLensProvider(
+    settingsManager
+  );
+  const codeLensDisposable = vscode.languages.registerCodeLensProvider(
+    { language: "yaml", scheme: "file" },
+    blueprintCodeLensProvider
+  );
+
   // Since URL and token are now stored as secrets, configuration changes are not relevant
   // The configuration listener is kept for potential future settings
   const configChangeListener = vscode.workspace.onDidChangeConfiguration(
-    async () => {
-      // No configuration-based settings to monitor currently
-      // This is kept for future extensibility
+    (e) => {
+      // Refresh CodeLens when active space or default space changes
+      if (
+        e.affectsConfiguration("torque-ai.activeSpace") ||
+        e.affectsConfiguration("torque-ai.space")
+      ) {
+        blueprintCodeLensProvider.refresh();
+      }
     }
   );
 
@@ -671,66 +575,14 @@ export async function activate(context: vscode.ExtensionContext) {
   }
 
   // Register unified setup command
-  let setupCommand: vscode.Disposable | undefined;
-  try {
-    setupCommand = vscode.commands.registerCommand("torque.setup", async () => {
-      try {
-        // Get URL
-        const url = await vscode.window.showInputBox({
-          prompt: "Enter your Torque API URL",
-          placeHolder: "e.g., https://account.qtorque.io",
-          validateInput: (value) => {
-            if (!value) {
-              return "URL is required";
-            }
-            try {
-              new URL(value);
-              return undefined;
-            } catch {
-              return "Please enter a valid URL";
-            }
-          }
-        });
+  // Register setup command
+  const setupCommand = registerSetupCommand(settingsManager, initializeClient);
 
-        if (!url) {
-          return;
-        }
-
-        // Get token
-        const token = await vscode.window.showInputBox({
-          prompt: "Enter your Torque API token",
-          password: true,
-          placeHolder: "API token will be stored securely",
-          validateInput: (value) => {
-            if (!value) {
-              return "Token is required";
-            }
-            if (value.length < 10) {
-              return "Token seems too short";
-            }
-            return undefined;
-          }
-        });
-
-        if (!token) {
-          return;
-        }
-
-        // Store both settings securely
-        await settingsManager.setSetting("url", url);
-        await settingsManager.setSetting("token", token);
-
-        // Initialize client and register MCP server with success message and user error messages
-        await initializeClient(settingsManager, true, true, true);
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        vscode.window.showErrorMessage(`Setup failed: ${errorMessage}`);
-      }
-    });
-  } catch {
-    logger.warn("Command torque.setup already registered, skipping");
-  }
+  // Register set active space command
+  const setActiveSpaceCommand = registerSetActiveSpaceCommand(
+    settingsManager,
+    () => apiClient
+  );
 
   // Register test URI command for debugging
   let testUriCommand: vscode.Disposable | undefined;
@@ -759,130 +611,20 @@ export async function activate(context: vscode.ExtensionContext) {
   }
 
   // Register reset first-time state command for testing
-  let resetFirstTimeCommand: vscode.Disposable | undefined;
-  try {
-    resetFirstTimeCommand = vscode.commands.registerCommand(
-      "torque.resetFirstTime",
-      async () => {
-        // Reset first-time state
-        await context.globalState.update("hasBeenActivatedBefore", false);
-
-        // Clear configuration to test full onboarding flow
-        await settingsManager.setSetting("url", "");
-        await settingsManager.setSetting("token", "");
-
-        logger.info(
-          "Reset first-time state and cleared configuration - extension will show full onboarding on next activation"
-        );
-        vscode.window
-          .showInformationMessage(
-            "First-time state and configuration reset. Reload the window to test the full onboarding flow.",
-            "Reload Window"
-          )
-          .then((result) => {
-            if (result === "Reload Window") {
-              vscode.commands.executeCommand("workbench.action.reloadWindow");
-            }
-          });
-      }
-    );
-  } catch {
-    logger.warn("Command torque.resetFirstTime already registered, skipping");
-  }
+  const resetFirstTimeCommand = registerResetFirstTimeCommand(
+    context,
+    settingsManager
+  );
 
   // Register create Torque Blueprint command
-  let createBlueprintCommand: vscode.Disposable | undefined;
-  try {
-    createBlueprintCommand = vscode.commands.registerCommand(
-      "torque.createBlueprint",
-      async () => {
-        const workspaceFolders = vscode.workspace.workspaceFolders;
-        if (!workspaceFolders || workspaceFolders.length === 0) {
-          vscode.window.showErrorMessage(
-            "Please open a workspace folder before creating a Torque Blueprint"
-          );
-          return;
-        }
-
-        // Prompt for filename
-        const filename = await vscode.window.showInputBox({
-          prompt: "Enter blueprint filename",
-          placeHolder: "blueprint.yaml",
-          validateInput: (value) => {
-            if (!value) {
-              return "Filename is required";
-            }
-            if (!value.endsWith(".yaml") && !value.endsWith(".yml")) {
-              return "Filename must end with .yaml or .yml";
-            }
-            return undefined;
-          }
-        });
-
-        if (!filename) {
-          return;
-        }
-
-        // Create blueprint content
-        const blueprintContent = `# yaml-language-server: $schema=https://raw.githubusercontent.com/QualiTorque/torque-vs-code-extensions/master/client/schemas/blueprint-spec2-schema.json
-spec_version: 2
-description: ''
-inputs:
-grains:
-`;
-
-        // Create file in workspace root
-        const workspaceRoot = workspaceFolders[0].uri;
-        const blueprintUri = vscode.Uri.joinPath(workspaceRoot, filename);
-
-        try {
-          // Check if file already exists
-          try {
-            await vscode.workspace.fs.stat(blueprintUri);
-            const overwrite = await vscode.window.showWarningMessage(
-              `File ${filename} already exists. Overwrite?`,
-              "Yes",
-              "No"
-            );
-            if (overwrite !== "Yes") {
-              return;
-            }
-          } catch {
-            // File doesn't exist, continue
-          }
-
-          // Write the file
-          await vscode.workspace.fs.writeFile(
-            blueprintUri,
-            Buffer.from(blueprintContent, "utf8")
-          );
-
-          // Open the file
-          const document =
-            await vscode.workspace.openTextDocument(blueprintUri);
-          await vscode.window.showTextDocument(document);
-
-          vscode.window.showInformationMessage(
-            `Torque Blueprint created: ${filename}`
-          );
-          logger.info(`Created Torque Blueprint: ${filename}`);
-        } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : String(error);
-          vscode.window.showErrorMessage(
-            `Failed to create blueprint: ${errorMessage}`
-          );
-          logger.error("Failed to create Torque Blueprint", error as Error);
-        }
-      }
-    );
-  } catch {
-    logger.warn("Command torque.createBlueprint already registered, skipping");
-  }
+  const createBlueprintCommand = registerCreateBlueprintCommand();
 
   context.subscriptions.push(configChangeListener);
   if (setupCommand) {
     context.subscriptions.push(setupCommand);
+  }
+  if (setActiveSpaceCommand) {
+    context.subscriptions.push(setActiveSpaceCommand);
   }
   if (triggerMcpDiscoveryCommand) {
     context.subscriptions.push(triggerMcpDiscoveryCommand);
@@ -902,6 +644,8 @@ grains:
   if (createBlueprintCommand) {
     context.subscriptions.push(createBlueprintCommand);
   }
+  context.subscriptions.push(codeLensDisposable);
+
   const uriHandler = vscode.window.registerUriHandler({
     handleUri: async (uri) => {
       logger.info(`[URI Handler] Received URI: ${uri.toString()}`);

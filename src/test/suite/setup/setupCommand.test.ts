@@ -11,13 +11,14 @@
 
 import * as assert from "assert";
 import * as vscode from "vscode";
-import { SettingsManager } from "../../SettingsManager";
+import { SettingsManager } from "../../../domains/setup";
 
 suite("MCP and Tool Registration - Setup Command Integration", () => {
   let testContext: vscode.ExtensionContext;
   let settingsManager: SettingsManager;
   let originalShowInputBox: typeof vscode.window.showInputBox;
   let originalShowInformationMessage: typeof vscode.window.showInformationMessage;
+  let originalShowQuickPick: typeof vscode.window.showQuickPick;
 
   suiteSetup(async () => {
     // Get the extension and activate it
@@ -83,6 +84,7 @@ suite("MCP and Tool Registration - Setup Command Integration", () => {
     // Store original functions
     originalShowInputBox = vscode.window.showInputBox;
     originalShowInformationMessage = vscode.window.showInformationMessage;
+    originalShowQuickPick = vscode.window.showQuickPick;
   });
 
   suiteTeardown(async () => {
@@ -90,6 +92,7 @@ suite("MCP and Tool Registration - Setup Command Integration", () => {
     (vscode.window as any).showInputBox = originalShowInputBox;
     (vscode.window as any).showInformationMessage =
       originalShowInformationMessage;
+    (vscode.window as any).showQuickPick = originalShowQuickPick;
 
     // Clean up test storage by clearing the mock storage
     (testContext as any)._secretStorage = {};
@@ -119,11 +122,10 @@ suite("MCP and Tool Registration - Setup Command Integration", () => {
           urlPromptCalled = true;
           urlValidationFunction = options.validateInput;
 
-          // Verify default value
-          assert.strictEqual(options.value, "https://localhost:5051");
+          // Verify placeholder
           assert.strictEqual(
             options.placeHolder,
-            "e.g., https://localhost:5051"
+            "e.g., https://account.qtorque.io"
           );
 
           return "https://api.example.com";
@@ -131,7 +133,12 @@ suite("MCP and Tool Registration - Setup Command Integration", () => {
         return "test-token-1234567890"; // Mock token response
       };
 
+      (vscode.window as any).showQuickPick = async () => {
+        return undefined; // Mock space selection (no spaces or skipped)
+      };
+
       (vscode.window as any).showInformationMessage = async () => {};
+      (vscode.window as any).showWarningMessage = async () => {};
 
       // Act
       await vscode.commands.executeCommand("torque.setup");
@@ -186,7 +193,12 @@ suite("MCP and Tool Registration - Setup Command Integration", () => {
         return "https://api.example.com"; // Mock URL response
       };
 
+      (vscode.window as any).showQuickPick = async () => {
+        return undefined; // Mock space selection (no spaces or skipped)
+      };
+
       (vscode.window as any).showInformationMessage = async () => {};
+      (vscode.window as any).showWarningMessage = async () => {};
 
       // Act
       await vscode.commands.executeCommand("torque.setup");
@@ -211,6 +223,62 @@ suite("MCP and Tool Registration - Setup Command Integration", () => {
       }
     });
 
+    test("SHOULD prompt for default space after token", async () => {
+      // Arrange
+      let spacePromptCalled = false;
+      let spaceOptions: vscode.QuickPickOptions | undefined;
+
+      (vscode.window as any).showInputBox = async (
+        options: vscode.InputBoxOptions
+      ) => {
+        if (options?.prompt?.includes("API URL")) {
+          return "https://portal.qtorque.io";
+        }
+        if (options?.prompt?.includes("API token")) {
+          return "test-token-1234567890";
+        }
+        return undefined;
+      };
+
+      (vscode.window as any).showQuickPick = async (
+        items: any[],
+        options?: vscode.QuickPickOptions
+      ) => {
+        spacePromptCalled = true;
+        spaceOptions = options;
+
+        // Verify quick pick options
+        assert.ok(items, "Should provide space items");
+        assert.strictEqual(
+          options?.title,
+          "Set Default Space",
+          "Should have correct title"
+        );
+        assert.strictEqual(
+          options?.placeHolder,
+          "Select your default Torque space",
+          "Should have correct placeholder"
+        );
+
+        // Simulate selecting the first space
+        return items[0];
+      };
+
+      (vscode.window as any).showInformationMessage = async () => {};
+      (vscode.window as any).showWarningMessage = async () => {};
+
+      // Act
+      await vscode.commands.executeCommand("torque.setup");
+
+      // Assert
+      assert.strictEqual(
+        spacePromptCalled,
+        true,
+        "Should prompt for space selection"
+      );
+      assert.ok(spaceOptions, "Should provide space selection options");
+    });
+
     test("SHOULD store credentials securely after validation", async () => {
       // Arrange
       const testUrl = "https://api.example.com";
@@ -228,7 +296,12 @@ suite("MCP and Tool Registration - Setup Command Integration", () => {
         return undefined;
       };
 
+      (vscode.window as any).showQuickPick = async () => {
+        return undefined; // Mock space selection (no spaces or skipped)
+      };
+
       (vscode.window as any).showInformationMessage = async () => {};
+      (vscode.window as any).showWarningMessage = async () => {};
 
       // Act
       await vscode.commands.executeCommand("torque.setup");
@@ -290,7 +363,12 @@ suite("MCP and Tool Registration - Setup Command Integration", () => {
         return undefined;
       };
 
+      (vscode.window as any).showQuickPick = async () => {
+        return undefined; // Mock space selection
+      };
+
       (vscode.window as any).showInformationMessage = async () => {};
+      (vscode.window as any).showWarningMessage = async () => {};
 
       try {
         // Act
@@ -341,7 +419,12 @@ suite("MCP and Tool Registration - Setup Command Integration", () => {
         return undefined;
       };
 
+      (vscode.window as any).showQuickPick = async () => {
+        return undefined; // Mock space selection
+      };
+
       (vscode.window as any).showInformationMessage = async () => {};
+      (vscode.window as any).showWarningMessage = async () => {};
 
       try {
         // Act
@@ -410,6 +493,10 @@ suite("MCP and Tool Registration - Setup Command Integration", () => {
         return undefined;
       };
 
+      (vscode.window as any).showQuickPick = async () => {
+        return undefined; // Mock space selection
+      };
+
       (vscode.window as any).showInformationMessage = async (
         message: string,
         ...actions: string[]
@@ -421,6 +508,8 @@ suite("MCP and Tool Registration - Setup Command Integration", () => {
         }
         return undefined;
       };
+
+      (vscode.window as any).showWarningMessage = async () => {};
 
       try {
         // Act
@@ -491,7 +580,12 @@ suite("MCP and Tool Registration - Setup Command Integration", () => {
         return undefined;
       };
 
+      (vscode.window as any).showQuickPick = async () => {
+        return undefined; // Mock space selection
+      };
+
       (vscode.window as any).showInformationMessage = async () => {};
+      (vscode.window as any).showWarningMessage = async () => {};
 
       try {
         // Act - Run setup command again
@@ -642,6 +736,12 @@ suite("MCP and Tool Registration - Setup Command Integration", () => {
         }
         return undefined;
       };
+
+      (vscode.window as any).showQuickPick = async () => {
+        return undefined; // Mock space selection
+      };
+
+      (vscode.window as any).showWarningMessage = async () => {};
 
       (vscode.window as any).showErrorMessage = async (message: string) => {
         errorMessageShown = true;

@@ -3,8 +3,8 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import vscode from "vscode";
-import { TorqueEnvironmentDetailsTool } from "../../tools/TorqueLanguageModelTools";
-import { getIdeCommand } from "../../ides/ideCommands";
+import { TorqueEnvironmentDetailsTool } from "../tools/TorqueEnvironmentDetailsTool";
+import { getIdeCommand } from "../../../ides/ideCommands";
 
 interface EnvironmentContextParams {
   space_name: string;

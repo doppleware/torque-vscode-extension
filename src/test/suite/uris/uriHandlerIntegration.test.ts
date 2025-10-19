@@ -7,7 +7,7 @@
 
 import * as assert from "assert";
 import * as vscode from "vscode";
-import { SettingsManager } from "../../SettingsManager";
+import { SettingsManager } from "../../../domains/setup";
 
 suite("URI Handler Integration Test Suite", () => {
   let extension: vscode.Extension<unknown>;

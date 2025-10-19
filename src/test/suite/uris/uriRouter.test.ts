@@ -1,6 +1,6 @@
 import * as assert from "assert";
 import * as vscode from "vscode";
-import { UriRouter } from "../../uris/UriRouter";
+import { UriRouter } from "../../../uris/UriRouter";
 
 suite("UriRouter Test Suite", () => {
   let uriRouter: UriRouter;

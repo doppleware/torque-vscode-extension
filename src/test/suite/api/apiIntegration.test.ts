@@ -13,9 +13,9 @@
 
 import * as assert from "assert";
 import type * as vscode from "vscode";
-import { MockTorqueServer } from "./mockServer";
-import { ApiClient } from "../../api/ApiClient";
-import { TorqueEnvironmentDetailsTool } from "../../tools/TorqueLanguageModelTools";
+import { MockTorqueServer } from "../mockServer";
+import { ApiClient } from "../../../api/ApiClient";
+import { TorqueEnvironmentDetailsTool } from "../../../domains/environment-context";
 
 suite("API Integration Test", () => {
   let mockServer: MockTorqueServer;

@@ -1,8 +1,8 @@
 import * as assert from "assert";
 import * as sinon from "sinon";
 import * as vscode from "vscode";
-import { TorqueEnvironmentDetailsTool } from "../../tools/TorqueLanguageModelTools";
-import { ApiClient } from "../../api/ApiClient";
+import { TorqueEnvironmentDetailsTool } from "../../../domains/environment-context";
+import { ApiClient } from "../../../api/ApiClient";
 
 interface MockAxiosResponse<T> {
   data: T;

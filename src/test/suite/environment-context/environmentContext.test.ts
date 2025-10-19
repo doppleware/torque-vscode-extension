@@ -1,7 +1,7 @@
 import * as assert from "assert";
 import * as sinon from "sinon";
 import * as vscode from "vscode";
-import { TorqueEnvironmentDetailsTool } from "../../tools/TorqueLanguageModelTools";
+import { TorqueEnvironmentDetailsTool } from "../../../domains/environment-context";
 
 // Simple integration test focusing on the key functionality
 suite("Environment Context Handler Test Suite", () => {

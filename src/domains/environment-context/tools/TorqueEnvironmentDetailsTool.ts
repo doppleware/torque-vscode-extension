@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { getClient } from "../extension";
+import { getClient } from "../../../extension";
 
 interface EnvironmentDetailsParameters {
   space_name: string;

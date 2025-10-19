@@ -18,3 +18,8 @@ export interface RefreshTokenPayload {
 }
 
 export type RefreshTokenResponse = UserSession;
+
+export interface Space {
+  name: string;
+  description?: string;
+}

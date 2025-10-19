@@ -14,7 +14,7 @@
 import * as assert from "assert";
 import * as vscode from "vscode";
 import { MockTorqueServer } from "./mockServer";
-import { TorqueEnvironmentDetailsTool } from "../../tools/TorqueLanguageModelTools";
+import { TorqueEnvironmentDetailsTool } from "../../domains/environment-context";
 
 suite("End-to-End Integration Test", () => {
   let mockServer: MockTorqueServer;

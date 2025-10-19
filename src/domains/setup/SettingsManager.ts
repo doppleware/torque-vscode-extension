@@ -1,5 +1,5 @@
 import vscode from "vscode";
-import type { PackageJSON } from "./types";
+import type { PackageJSON } from "../../types";
 
 export interface SettingDefinition {
   key: string;
@@ -11,7 +11,9 @@ export type Settings = Record<string, string | undefined>;
 export class SettingsManager {
   private static readonly SETTING_DEFINITIONS: SettingDefinition[] = [
     { key: "url", secret: true },
-    { key: "token", secret: true }
+    { key: "token", secret: true },
+    { key: "space", secret: false },
+    { key: "activeSpace", secret: false }
   ];
 
   private context: vscode.ExtensionContext;
