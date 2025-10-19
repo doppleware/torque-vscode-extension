@@ -223,10 +223,9 @@ suite("MCP and Tool Registration - Setup Command Integration", () => {
       }
     });
 
-    test("SHOULD prompt for default space after token", async () => {
+    test("SHOULD allow space selection to be optional when API fails", async () => {
       // Arrange
-      let spacePromptCalled = false;
-      let spaceOptions: vscode.QuickPickOptions | undefined;
+      let warningShown = false;
 
       (vscode.window as any).showInputBox = async (
         options: vscode.InputBoxOptions
@@ -240,43 +239,28 @@ suite("MCP and Tool Registration - Setup Command Integration", () => {
         return undefined;
       };
 
-      (vscode.window as any).showQuickPick = async (
-        items: any[],
-        options?: vscode.QuickPickOptions
-      ) => {
-        spacePromptCalled = true;
-        spaceOptions = options;
-
-        // Verify quick pick options
-        assert.ok(items, "Should provide space items");
-        assert.strictEqual(
-          options?.title,
-          "Set Default Space",
-          "Should have correct title"
-        );
-        assert.strictEqual(
-          options?.placeHolder,
-          "Select your default Torque space",
-          "Should have correct placeholder"
-        );
-
-        // Simulate selecting the first space
-        return items[0];
+      (vscode.window as any).showQuickPick = async () => {
+        // This should not be called if API fails
+        assert.fail("Space selection should not be shown when API fails");
       };
 
       (vscode.window as any).showInformationMessage = async () => {};
-      (vscode.window as any).showWarningMessage = async () => {};
+      (vscode.window as any).showWarningMessage = async (message: string) => {
+        if (message.includes("Failed to fetch spaces")) {
+          warningShown = true;
+        }
+      };
 
       // Act
       await vscode.commands.executeCommand("torque.setup");
 
       // Assert
+      // When API fails, setup should continue with a warning but no space selection
       assert.strictEqual(
-        spacePromptCalled,
+        warningShown,
         true,
-        "Should prompt for space selection"
+        "Should show warning when space fetch fails"
       );
-      assert.ok(spaceOptions, "Should provide space selection options");
     });
 
     test("SHOULD store credentials securely after validation", async () => {

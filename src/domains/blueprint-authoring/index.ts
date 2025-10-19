@@ -10,3 +10,4 @@ export {
   BLUEPRINT_SCHEMA_URL
 } from "./templates/blueprintTemplate";
 export { BlueprintCodeLensProvider } from "./codeLens/BlueprintCodeLensProvider";
+export { registerGrainCompletionProvider } from "./completion/GrainCompletionProvider";

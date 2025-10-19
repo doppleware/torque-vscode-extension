@@ -18,7 +18,8 @@ import { UriRouter } from "./uris/UriRouter";
 import { logger } from "./utils/Logger";
 import {
   registerCreateBlueprintCommand,
-  BlueprintCodeLensProvider
+  BlueprintCodeLensProvider,
+  registerGrainCompletionProvider
 } from "./domains/blueprint-authoring";
 
 const START_PORT = 33100;
@@ -357,6 +358,12 @@ export async function activate(context: vscode.ExtensionContext) {
     blueprintCodeLensProvider
   );
 
+  // Register Grain Completion Provider
+  const grainCompletion = registerGrainCompletionProvider(
+    settingsManager,
+    () => apiClient
+  );
+
   // Since URL and token are now stored as secrets, configuration changes are not relevant
   // The configuration listener is kept for potential future settings
   const configChangeListener = vscode.workspace.onDidChangeConfiguration(
@@ -655,6 +662,7 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(createBlueprintCommand);
   }
   context.subscriptions.push(codeLensDisposable);
+  context.subscriptions.push(grainCompletion.disposable);
 
   const uriHandler = vscode.window.registerUriHandler({
     handleUri: async (uri) => {
@@ -734,6 +742,11 @@ export async function activate(context: vscode.ExtensionContext) {
   });
 
   logger.info("Torque AI extension activation completed successfully");
+
+  // Return API for testing
+  return {
+    resetApiClientForTesting
+  };
 }
 
 export function deactivate() {
@@ -748,6 +761,15 @@ export function deactivate() {
   }
   isActivated = false;
   logger.dispose();
+}
+
+/**
+ * Reset the API client - for testing purposes only
+ * This is needed in tests where credentials are cleared but the module-level
+ * apiClient variable remains cached
+ */
+export function resetApiClientForTesting() {
+  apiClient = null;
 }
 
 export function getClient(): ApiClient {

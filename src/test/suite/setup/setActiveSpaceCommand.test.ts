@@ -126,7 +126,16 @@ suite("Set Active Space Command Test Suite", () => {
 
   suite("GIVEN extension is not configured", () => {
     test("SHOULD show error and offer to configure", async () => {
-      // Arrange
+      // Arrange - Clear all credentials to ensure extension is not configured
+      await settingsManager.setSetting("url", undefined);
+      await settingsManager.setSetting("token", undefined);
+      await settingsManager.setSetting("space", undefined);
+      await settingsManager.setSetting("activeSpace", undefined);
+
+      // Reset the API client to simulate extension not being configured
+      const ext = vscode.extensions.getExtension("quali.torque-ai");
+      ext?.exports?.resetApiClientForTesting?.();
+
       let errorMessageShown = false;
       let configureOffered = false;
 
