@@ -25,6 +25,7 @@ suite("MCP and Tool Registration - Extension Activation", () => {
         get: async () => undefined, // Simulate no stored settings
         store: async () => {},
         delete: async () => {},
+        keys: async () => [],
         onDidChange: () => ({ dispose: () => {} }) as vscode.Disposable
       },
       subscriptions: [],

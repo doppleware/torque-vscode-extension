@@ -46,6 +46,10 @@ suite("MCP and Tool Registration - Setup Command Integration", () => {
             delete (testContext as any)._secretStorage[key];
           }
         },
+        keys: async () => {
+          const storage = (testContext as any)._secretStorage || {};
+          return Object.keys(storage);
+        },
         onDidChange: () => ({ dispose: () => {} }) as vscode.Disposable
       },
       subscriptions: [],
