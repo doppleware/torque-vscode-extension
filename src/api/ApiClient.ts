@@ -7,6 +7,7 @@ import https from "https";
 import { AgenticService } from "./services/AgenticService";
 import { AuthenticationService } from "./services/AuthenticationService";
 import { SpacesService } from "./services/SpacesService";
+import { EnvironmentsService } from "./services/EnvironmentsService";
 import type { UserSession } from "./services/types";
 
 export class ApiClient {
@@ -21,6 +22,7 @@ export class ApiClient {
   public readonly authentication: AuthenticationService;
   public readonly agentic: AgenticService;
   public readonly spaces: SpacesService;
+  public readonly environments: EnvironmentsService;
 
   constructor(baseURL: string, token: string) {
     this.instance = axios.create({
@@ -36,6 +38,7 @@ export class ApiClient {
     this.authentication = new AuthenticationService(this);
     this.agentic = new AgenticService(this);
     this.spaces = new SpacesService(this);
+    this.environments = new EnvironmentsService(this);
 
     this.setupInterceptors();
   }

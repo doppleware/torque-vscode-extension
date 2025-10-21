@@ -19,6 +19,7 @@ import { logger } from "./utils/Logger";
 import {
   registerCreateBlueprintCommand,
   registerBlueprintActionsCommand,
+  registerShowBlueprintEnvironmentsCommand,
   BlueprintCodeLensProvider,
   registerGrainCompletionProvider
 } from "./domains/blueprint-authoring";
@@ -366,7 +367,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Register Blueprint CodeLens Provider
   const blueprintCodeLensProvider = new BlueprintCodeLensProvider(
-    settingsManager
+    settingsManager,
+    () => apiClient
   );
   const codeLensDisposable = vscode.languages.registerCodeLensProvider(
     { language: "yaml", scheme: "file" },
@@ -654,6 +656,10 @@ export async function activate(context: vscode.ExtensionContext) {
     () => apiClient
   );
 
+  // Register show blueprint environments command
+  const showBlueprintEnvironmentsCommand =
+    registerShowBlueprintEnvironmentsCommand();
+
   context.subscriptions.push(configChangeListener);
   if (setupCommand) {
     context.subscriptions.push(setupCommand);
@@ -684,6 +690,9 @@ export async function activate(context: vscode.ExtensionContext) {
   }
   if (blueprintActionsCommand) {
     context.subscriptions.push(blueprintActionsCommand);
+  }
+  if (showBlueprintEnvironmentsCommand) {
+    context.subscriptions.push(showBlueprintEnvironmentsCommand);
   }
   context.subscriptions.push(codeLensDisposable);
   context.subscriptions.push(grainCompletion.disposable);

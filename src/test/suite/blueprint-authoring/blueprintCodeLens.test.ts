@@ -79,7 +79,10 @@ suite("Blueprint CodeLens Provider Test Suite", () => {
     } as vscode.ExtensionContext;
 
     settingsManager = new SettingsManager(testContext);
-    codeLensProvider = new BlueprintCodeLensProvider(settingsManager);
+    codeLensProvider = new BlueprintCodeLensProvider(
+      settingsManager,
+      () => null
+    );
   });
 
   suiteTeardown(async () => {
@@ -131,10 +134,23 @@ suite("Blueprint CodeLens Provider Test Suite", () => {
 
       // Assert
       assert.ok(codeLenses, "Should return CodeLens items");
-      assert.strictEqual(codeLenses.length, 2, "Should return two CodeLenses");
+      assert.strictEqual(
+        codeLenses.length,
+        3,
+        "Should return three CodeLenses (space + environment status + actions)"
+      );
       assert.ok(
         codeLenses[0].command?.title.includes("Active Space:"),
-        "CodeLens title should mention Active Space"
+        "First CodeLens should be Active Space"
+      );
+      assert.ok(
+        codeLenses[1].command?.title === "Inactive" ||
+          codeLenses[1].command?.title.includes("Running"),
+        "Second CodeLens should be environment status"
+      );
+      assert.ok(
+        codeLenses[2].command?.title === "Actions...",
+        "Third CodeLens should be Actions"
       );
     });
 
@@ -212,7 +228,11 @@ suite("Blueprint CodeLens Provider Test Suite", () => {
       const codeLenses = await codeLensProvider.provideCodeLenses(doc);
 
       // Assert
-      assert.strictEqual(codeLenses.length, 2, "Should return two CodeLenses");
+      assert.strictEqual(
+        codeLenses.length,
+        3,
+        "Should return three CodeLenses"
+      );
       assert.ok(
         codeLenses[0].command?.title.includes(activeSpace),
         `CodeLens should display active space: ${activeSpace}`
@@ -237,7 +257,11 @@ suite("Blueprint CodeLens Provider Test Suite", () => {
       const codeLenses = await codeLensProvider.provideCodeLenses(doc);
 
       // Assert
-      assert.strictEqual(codeLenses.length, 2, "Should return two CodeLenses");
+      assert.strictEqual(
+        codeLenses.length,
+        3,
+        "Should return three CodeLenses"
+      );
       assert.ok(
         codeLenses[0].command?.title.includes(defaultSpace),
         `CodeLens should display default space: ${defaultSpace}`
@@ -270,7 +294,11 @@ suite("Blueprint CodeLens Provider Test Suite", () => {
       const codeLenses = await codeLensProvider.provideCodeLenses(doc);
 
       // Assert
-      assert.strictEqual(codeLenses.length, 2, "Should return two CodeLenses");
+      assert.strictEqual(
+        codeLenses.length,
+        3,
+        "Should return three CodeLenses"
+      );
       assert.ok(
         codeLenses[0].command?.title.includes("Not Set"),
         "CodeLens should display 'Not Set' when no space is configured"
@@ -306,7 +334,11 @@ suite("Blueprint CodeLens Provider Test Suite", () => {
       const codeLenses = await codeLensProvider.provideCodeLenses(doc);
 
       // Assert
-      assert.strictEqual(codeLenses.length, 2, "Should return two CodeLenses");
+      assert.strictEqual(
+        codeLenses.length,
+        3,
+        "Should return three CodeLenses"
+      );
       assert.ok(
         codeLenses[0].command?.title.includes(activeSpace),
         `CodeLens should prefer active space: ${activeSpace} over default`
@@ -336,8 +368,8 @@ suite("Blueprint CodeLens Provider Test Suite", () => {
       // Assert
       assert.strictEqual(
         codeLenses.length,
-        2,
-        "Should return two CodeLenses (space + actions)"
+        3,
+        "Should return three CodeLenses (space + status + actions)"
       );
       assert.strictEqual(
         codeLenses[0].command?.command,
@@ -361,16 +393,20 @@ suite("Blueprint CodeLens Provider Test Suite", () => {
       const codeLenses = await codeLensProvider.provideCodeLenses(doc);
 
       // Assert
-      assert.strictEqual(codeLenses.length, 2, "Should return two CodeLenses");
       assert.strictEqual(
-        codeLenses[1].command?.command,
-        "torque.blueprintActions",
-        "Second CodeLens should have blueprint actions command"
+        codeLenses.length,
+        3,
+        "Should return three CodeLenses"
       );
       assert.strictEqual(
-        codeLenses[1].command?.title,
+        codeLenses[2].command?.command,
+        "torque.blueprintActions",
+        "Third CodeLens should have blueprint actions command"
+      );
+      assert.strictEqual(
+        codeLenses[2].command?.title,
         "Actions...",
-        "Second CodeLens should have 'Actions...' title"
+        "Third CodeLens should have 'Actions...' title"
       );
     });
 
@@ -385,7 +421,11 @@ suite("Blueprint CodeLens Provider Test Suite", () => {
       const codeLenses = await codeLensProvider.provideCodeLenses(doc);
 
       // Assert
-      assert.strictEqual(codeLenses.length, 2, "Should return two CodeLenses");
+      assert.strictEqual(
+        codeLenses.length,
+        3,
+        "Should return three CodeLenses"
+      );
 
       // Both should be at line 1 (where spec_version is)
       assert.strictEqual(

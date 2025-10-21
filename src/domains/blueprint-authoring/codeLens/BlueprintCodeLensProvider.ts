@@ -3,12 +3,15 @@
  *
  * Provides CodeLens above the spec_version line in blueprint YAML files showing:
  * - Active Torque space
+ * - Environment status (active/inactive)
  * - Blueprint actions (Validate, Deploy)
  * A blueprint is identified by the presence of the Quali Torque schema reference.
  */
 
 import * as vscode from "vscode";
+import * as path from "path";
 import type { SettingsManager } from "../../setup/SettingsManager";
+import type { ApiClient } from "../../../api/ApiClient";
 import { BLUEPRINT_SCHEMA_URL } from "../templates/blueprintTemplate";
 
 export class BlueprintCodeLensProvider implements vscode.CodeLensProvider {
@@ -17,7 +20,10 @@ export class BlueprintCodeLensProvider implements vscode.CodeLensProvider {
   public readonly onDidChangeCodeLenses: vscode.Event<void> =
     this._onDidChangeCodeLenses.event;
 
-  constructor(private settingsManager: SettingsManager) {}
+  constructor(
+    private settingsManager: SettingsManager,
+    private getApiClient: () => ApiClient | null
+  ) {}
 
   /**
    * Refresh CodeLens when settings change
@@ -65,6 +71,10 @@ export class BlueprintCodeLensProvider implements vscode.CodeLensProvider {
       tooltip: "Click to change the active Torque space for this workspace"
     });
 
+    // Environment Status CodeLens
+    const environmentStatusCodeLens =
+      await this.createEnvironmentStatusCodeLens(document, codeLensPosition);
+
     // Actions CodeLens
     const actionsCodeLens = new vscode.CodeLens(codeLensPosition, {
       title: "Actions...",
@@ -73,7 +83,71 @@ export class BlueprintCodeLensProvider implements vscode.CodeLensProvider {
       arguments: [document.uri]
     });
 
-    return [spaceCodeLens, actionsCodeLens];
+    return [spaceCodeLens, environmentStatusCodeLens, actionsCodeLens];
+  }
+
+  /**
+   * Create the environment status CodeLens
+   */
+  private async createEnvironmentStatusCodeLens(
+    document: vscode.TextDocument,
+    position: vscode.Range
+  ): Promise<vscode.CodeLens> {
+    const apiClient = this.getApiClient();
+
+    if (!apiClient) {
+      // No API client available, show "Not Configured" status
+      return new vscode.CodeLens(position, {
+        title: "Inactive",
+        command: "",
+        tooltip: "Configure Torque AI to see active environments"
+      });
+    }
+
+    try {
+      // Get blueprint name from file name (without extension)
+      const blueprintName = this.getBlueprintName(document);
+
+      // Fetch active environments
+      const response =
+        await apiClient.environments.getActiveEnvironments(blueprintName);
+
+      const environmentCount = response.environment_list.length;
+
+      if (environmentCount === 0) {
+        return new vscode.CodeLens(position, {
+          title: "Inactive",
+          command: "",
+          tooltip: "No active environments for this blueprint"
+        });
+      }
+
+      // Show "Running (x)" with command to list environments
+      return new vscode.CodeLens(position, {
+        title: `Running (${environmentCount})`,
+        command: "torque.showBlueprintEnvironments",
+        tooltip: "Click to view active environments",
+        arguments: [blueprintName, response.environment_list]
+      });
+    } catch (error) {
+      // If API call fails, show "Inactive" (don't fail the whole CodeLens)
+      return new vscode.CodeLens(position, {
+        title: "Inactive",
+        command: "",
+        tooltip:
+          error instanceof Error
+            ? `Failed to fetch environments: ${error.message}`
+            : "Failed to fetch environments"
+      });
+    }
+  }
+
+  /**
+   * Get blueprint name from document (file name without extension)
+   */
+  private getBlueprintName(document: vscode.TextDocument): string {
+    const fileName = path.basename(document.uri.fsPath);
+    return fileName.replace(/\.(yaml|yml)$/i, "");
   }
 
   /**

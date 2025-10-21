@@ -1,4 +1,3 @@
-import { formatISO } from "date-fns/formatISO";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -177,14 +176,30 @@ export const attachEnvironmentFileToChatContext = async (
       grainResources
     );
 
-    // Create temporary file with JSON extension
+    // Extract environment name from metadata
+    let environmentName = environmentId; // Fallback to ID
+    try {
+      const envData = environmentDetails as {
+        details?: {
+          definition?: {
+            metadata?: {
+              name?: string;
+            };
+          };
+        };
+      };
+      environmentName =
+        envData.details?.definition?.metadata?.name ?? environmentId;
+    } catch {
+      // Use fallback if extraction fails
+      logger.warn("Could not extract environment name from metadata");
+    }
+
+    // Create temporary file with environment name
     const tempDir = os.tmpdir();
-    const fileName = `environment-${spaceName}-${environmentId}-${formatISO(
-      new Date(),
-      {
-        format: "basic"
-      }
-    )}.json`;
+    // Sanitize the environment name for use in filename
+    const sanitizedName = environmentName.replace(/[^a-zA-Z0-9-_]/g, "_");
+    const fileName = `${sanitizedName}.json`;
     const filePath = path.join(tempDir, fileName);
 
     // Write simplified JSON content to file

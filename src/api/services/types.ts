@@ -24,6 +24,56 @@ export interface Space {
   description?: string;
 }
 
+export interface EnvironmentOwner {
+  first_name: string;
+  last_name: string;
+  timezone: string;
+  email: string;
+  join_date: string;
+  display_first_name: string;
+  display_last_name: string;
+}
+
+export interface EnvironmentMetadata {
+  name: string;
+  space_name: string;
+  automation: boolean;
+  eac_url: string | null;
+  blueprint: string;
+  blueprint_name: string;
+  blueprint_display_name: string;
+  blueprint_commit: string;
+  is_attached: boolean;
+  repository_name: string;
+  blueprint_branch: string | null;
+  blueprint_folder: string | null;
+  inline_blueprint: boolean;
+}
+
+export interface Environment {
+  id: string;
+  owner: EnvironmentOwner;
+  initiator: EnvironmentOwner;
+  details: {
+    definition: {
+      metadata: EnvironmentMetadata;
+    };
+  };
+}
+
+export interface EnvironmentListResponse {
+  environment_list: Environment[];
+  paging_info: {
+    full_count: number;
+    requested_page: number;
+    total_pages: number;
+  };
+  active_environments: number;
+  user_environments: number;
+  environments_with_errors: number;
+  always_on_environments: number;
+}
+
 export interface Repository {
   name: string;
   repository_url?: string;
