@@ -80,7 +80,7 @@ export async function getGitRemoteUrl(
 
     // Get the remote URL (typically from 'origin')
     const remotes: Remote[] = repository.state.remotes;
-    if (!remotes || remotes.length === 0) {
+    if (!remotes?.length) {
       logger.debug("No Git remotes found");
       return null;
     }
