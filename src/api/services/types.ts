@@ -80,3 +80,101 @@ export interface IacAssetsResponse {
   iac_assets: IacAsset[];
   paging_info: PagingInfo;
 }
+
+export interface BlueprintValidationRequest {
+  blueprint_name: string;
+  blueprint_raw_64: string;
+}
+
+export interface BlueprintValidationError {
+  message: string;
+  name?: string;
+  code?: string;
+  line?: number;
+  column?: number;
+  path?: string;
+}
+
+export interface BlueprintValidationResponse {
+  errors: BlueprintValidationError[];
+  warnings?: BlueprintValidationError[];
+}
+
+export interface CatalogInputDefaultValue {
+  type: string;
+  value: string;
+}
+
+export interface CatalogInput {
+  name: string;
+  type: string;
+  style: string;
+  default_value: string | null;
+  default_value_v2: CatalogInputDefaultValue | null;
+  has_default_value: boolean;
+  sensitive: boolean;
+  description: string | null;
+  allowed_values: string[];
+  parameter_name: string | null;
+  pattern: string | null;
+  validation_description: string | null;
+  depends_on: string[];
+  source_name: string | null;
+  overrides: unknown[];
+  max_size_in_mb: number | null;
+  max_files: number | null;
+  allowed_formats: string[];
+}
+
+export interface CatalogAssetDetails {
+  name: string;
+  display_name: string;
+  repository_branch: string | null;
+  commit: string | null;
+  url: string | null;
+  repository_url: string | null;
+  repository_name: string;
+  relative_path: string | null;
+  is_editable: boolean;
+  description: string;
+  instructions: string | null;
+  layout: unknown;
+  spec: string;
+  last_modified: string;
+  modified_by: string;
+  inputs: CatalogInput[];
+  outputs: unknown[];
+  environment_labels: unknown[];
+  env_references: unknown[];
+  icon: string;
+  color: string | null;
+  favorite: boolean;
+  custom_icon: unknown;
+  labels: unknown[];
+  enabled: boolean;
+  is_approval_required: boolean;
+  cost: number | null;
+  num_of_active_environments: number;
+}
+
+export interface CatalogTag {
+  name: string;
+  default_value: string;
+  possible_values: string[];
+  description: string;
+}
+
+export interface CatalogPolicies {
+  max_duration: string | null;
+  default_duration: string;
+  default_extend: string;
+  max_active_environments: number | null;
+  always_on: boolean;
+  allow_scheduling: boolean;
+}
+
+export interface CatalogAssetResponse {
+  details: CatalogAssetDetails;
+  tags: CatalogTag[];
+  policies: CatalogPolicies;
+}

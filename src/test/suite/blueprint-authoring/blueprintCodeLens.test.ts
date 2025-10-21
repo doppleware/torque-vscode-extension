@@ -131,11 +131,7 @@ suite("Blueprint CodeLens Provider Test Suite", () => {
 
       // Assert
       assert.ok(codeLenses, "Should return CodeLens items");
-      assert.strictEqual(
-        codeLenses.length,
-        1,
-        "Should return exactly one CodeLens"
-      );
+      assert.strictEqual(codeLenses.length, 2, "Should return two CodeLenses");
       assert.ok(
         codeLenses[0].command?.title.includes("Active Space:"),
         "CodeLens title should mention Active Space"
@@ -178,7 +174,7 @@ suite("Blueprint CodeLens Provider Test Suite", () => {
       );
     });
 
-    test("SHOULD detect blueprint files with spec_version: 2", async () => {
+    test("SHOULD NOT detect YAML files without schema in first line", async () => {
       // Create a mock document with spec_version but no schema comment
       const doc = await vscode.workspace.openTextDocument({
         language: "yaml",
@@ -188,12 +184,11 @@ suite("Blueprint CodeLens Provider Test Suite", () => {
       // Get CodeLens items
       const codeLenses = await codeLensProvider.provideCodeLenses(doc);
 
-      // Assert
-      assert.ok(codeLenses, "Should return CodeLens items");
+      // Assert - should return empty array since schema is not in first line
       assert.strictEqual(
         codeLenses.length,
-        1,
-        "Should return CodeLens for files with spec_version: 2"
+        0,
+        "Should NOT return CodeLenses for files without schema in first line"
       );
     });
   });
@@ -217,7 +212,7 @@ suite("Blueprint CodeLens Provider Test Suite", () => {
       const codeLenses = await codeLensProvider.provideCodeLenses(doc);
 
       // Assert
-      assert.strictEqual(codeLenses.length, 1, "Should return one CodeLens");
+      assert.strictEqual(codeLenses.length, 2, "Should return two CodeLenses");
       assert.ok(
         codeLenses[0].command?.title.includes(activeSpace),
         `CodeLens should display active space: ${activeSpace}`
@@ -242,7 +237,7 @@ suite("Blueprint CodeLens Provider Test Suite", () => {
       const codeLenses = await codeLensProvider.provideCodeLenses(doc);
 
       // Assert
-      assert.strictEqual(codeLenses.length, 1, "Should return one CodeLens");
+      assert.strictEqual(codeLenses.length, 2, "Should return two CodeLenses");
       assert.ok(
         codeLenses[0].command?.title.includes(defaultSpace),
         `CodeLens should display default space: ${defaultSpace}`
@@ -275,7 +270,7 @@ suite("Blueprint CodeLens Provider Test Suite", () => {
       const codeLenses = await codeLensProvider.provideCodeLenses(doc);
 
       // Assert
-      assert.strictEqual(codeLenses.length, 1, "Should return one CodeLens");
+      assert.strictEqual(codeLenses.length, 2, "Should return two CodeLenses");
       assert.ok(
         codeLenses[0].command?.title.includes("Not Set"),
         "CodeLens should display 'Not Set' when no space is configured"
@@ -311,7 +306,7 @@ suite("Blueprint CodeLens Provider Test Suite", () => {
       const codeLenses = await codeLensProvider.provideCodeLenses(doc);
 
       // Assert
-      assert.strictEqual(codeLenses.length, 1, "Should return one CodeLens");
+      assert.strictEqual(codeLenses.length, 2, "Should return two CodeLenses");
       assert.ok(
         codeLenses[0].command?.title.includes(activeSpace),
         `CodeLens should prefer active space: ${activeSpace} over default`
@@ -339,19 +334,23 @@ suite("Blueprint CodeLens Provider Test Suite", () => {
       const codeLenses = await codeLensProvider.provideCodeLenses(doc);
 
       // Assert
-      assert.strictEqual(codeLenses.length, 1, "Should return one CodeLens");
+      assert.strictEqual(
+        codeLenses.length,
+        2,
+        "Should return two CodeLenses (space + actions)"
+      );
       assert.strictEqual(
         codeLenses[0].command?.command,
         "torque.setActiveSpace",
-        "CodeLens should have command to set active space"
+        "First CodeLens should have command to set active space"
       );
       assert.ok(
         codeLenses[0].command?.tooltip,
-        "CodeLens should have a tooltip"
+        "First CodeLens should have a tooltip"
       );
     });
 
-    test("SHOULD place CodeLens at top of document", async () => {
+    test("SHOULD have actions CodeLens", async () => {
       // Arrange
       const doc = await vscode.workspace.openTextDocument({
         language: "yaml",
@@ -362,16 +361,53 @@ suite("Blueprint CodeLens Provider Test Suite", () => {
       const codeLenses = await codeLensProvider.provideCodeLenses(doc);
 
       // Assert
-      assert.strictEqual(codeLenses.length, 1, "Should return one CodeLens");
+      assert.strictEqual(codeLenses.length, 2, "Should return two CodeLenses");
+      assert.strictEqual(
+        codeLenses[1].command?.command,
+        "torque.blueprintActions",
+        "Second CodeLens should have blueprint actions command"
+      );
+      assert.strictEqual(
+        codeLenses[1].command?.title,
+        "Actions...",
+        "Second CodeLens should have 'Actions...' title"
+      );
+    });
+
+    test("SHOULD place CodeLenses above spec_version line", async () => {
+      // Arrange
+      const doc = await vscode.workspace.openTextDocument({
+        language: "yaml",
+        content: BLUEPRINT_TEMPLATE
+      });
+
+      // Act
+      const codeLenses = await codeLensProvider.provideCodeLenses(doc);
+
+      // Assert
+      assert.strictEqual(codeLenses.length, 2, "Should return two CodeLenses");
+
+      // Both should be at line 1 (where spec_version is)
       assert.strictEqual(
         codeLenses[0].range.start.line,
-        0,
-        "CodeLens should be at line 0"
+        1,
+        "First CodeLens should be at line 1 (spec_version line)"
       );
       assert.strictEqual(
         codeLenses[0].range.start.character,
         0,
-        "CodeLens should be at character 0"
+        "First CodeLens should be at character 0"
+      );
+
+      assert.strictEqual(
+        codeLenses[1].range.start.line,
+        1,
+        "Second CodeLens should be at line 1 (spec_version line)"
+      );
+      assert.strictEqual(
+        codeLenses[1].range.start.character,
+        0,
+        "Second CodeLens should be at character 0"
       );
     });
   });

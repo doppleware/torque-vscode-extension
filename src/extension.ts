@@ -18,6 +18,7 @@ import { UriRouter } from "./uris/UriRouter";
 import { logger } from "./utils/Logger";
 import {
   registerCreateBlueprintCommand,
+  registerBlueprintActionsCommand,
   BlueprintCodeLensProvider,
   registerGrainCompletionProvider
 } from "./domains/blueprint-authoring";
@@ -633,6 +634,12 @@ export async function activate(context: vscode.ExtensionContext) {
   // Register create Torque Blueprint command
   const createBlueprintCommand = registerCreateBlueprintCommand();
 
+  // Register blueprint actions command
+  const blueprintActionsCommand = registerBlueprintActionsCommand(
+    settingsManager,
+    () => apiClient
+  );
+
   context.subscriptions.push(configChangeListener);
   if (setupCommand) {
     context.subscriptions.push(setupCommand);
@@ -660,6 +667,9 @@ export async function activate(context: vscode.ExtensionContext) {
   }
   if (createBlueprintCommand) {
     context.subscriptions.push(createBlueprintCommand);
+  }
+  if (blueprintActionsCommand) {
+    context.subscriptions.push(blueprintActionsCommand);
   }
   context.subscriptions.push(codeLensDisposable);
   context.subscriptions.push(grainCompletion.disposable);

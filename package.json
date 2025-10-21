@@ -106,6 +106,12 @@
         "title": "Torque Blueprint",
         "category": "Torque",
         "icon": "$(file-add)"
+      },
+      {
+        "command": "torque.blueprintActions",
+        "title": "Blueprint Actions...",
+        "category": "Torque",
+        "icon": "$(menu)"
       }
     ],
     "menus": {

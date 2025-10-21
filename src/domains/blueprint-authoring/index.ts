@@ -5,6 +5,7 @@
  */
 
 export { registerCreateBlueprintCommand } from "./commands/createBlueprintCommand";
+export { registerBlueprintActionsCommand } from "./commands/blueprintActionsCommand";
 export {
   BLUEPRINT_TEMPLATE,
   BLUEPRINT_SCHEMA_URL
