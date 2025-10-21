@@ -178,3 +178,17 @@ export interface CatalogAssetResponse {
   tags: CatalogTag[];
   policies: CatalogPolicies;
 }
+
+export interface IntrospectionResource {
+  name: string;
+  type: string;
+  dependency_identifier: string;
+  attributes?: Record<string, string>;
+  tags?: Record<string, string>;
+  depends_on?: string[];
+}
+
+export interface IntrospectionResponse {
+  resources: IntrospectionResource[];
+  errors: unknown[];
+}

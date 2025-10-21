@@ -5,7 +5,8 @@ import type {
   IacAssetsResponse,
   BlueprintValidationRequest,
   BlueprintValidationResponse,
-  CatalogAssetResponse
+  CatalogAssetResponse,
+  IntrospectionResponse
 } from "./types";
 import { logger } from "../../utils/Logger";
 
@@ -150,6 +151,58 @@ export class SpacesService extends Service {
         );
       }
       logger.error("=========================");
+      throw error;
+    }
+  }
+
+  /**
+   * Gets the introspection data (resources) for a specific grain/asset in an environment
+   *
+   * @param spaceName The name of the space
+   * @param environmentId The ID of the environment
+   * @param assetName The name of the grain/asset to introspect
+   * @returns Promise<IntrospectionResponse> The introspection data containing resources
+   */
+  async getEnvironmentIntrospection(
+    spaceName: string,
+    environmentId: string,
+    assetName: string
+  ): Promise<IntrospectionResponse> {
+    const url = this.getUrl(
+      `spaces/${encodeURIComponent(spaceName)}/environments/${encodeURIComponent(environmentId)}/introspection/${encodeURIComponent(assetName)}`
+    );
+
+    logger.info("=== Introspection API Request ===");
+    logger.info(`URL: ${url}`);
+    logger.info(`Space Name: ${spaceName}`);
+    logger.info(`Environment ID: ${environmentId}`);
+    logger.info(`Asset Name: ${assetName}`);
+    logger.info("=================================");
+
+    try {
+      const response = await this.client.client.get<IntrospectionResponse>(url);
+
+      logger.info("=== Introspection API Response ===");
+      logger.info(`Status: ${response.status}`);
+      logger.info(`Resources count: ${response.data.resources?.length ?? 0}`);
+      logger.info("===================================");
+
+      return response.data;
+    } catch (error) {
+      logger.error("=== Introspection API Error ===");
+      logger.error(`Error fetching introspection for asset: ${assetName}`);
+      if (error && typeof error === "object" && "response" in error) {
+        const axiosError = error as {
+          response?: { status?: number; data?: unknown };
+        };
+        logger.error(
+          `HTTP Status: ${axiosError.response?.status ?? "unknown"}`
+        );
+        logger.error(
+          `Response Data: ${JSON.stringify(axiosError.response?.data ?? {}, null, 2)}`
+        );
+      }
+      logger.error("================================");
       throw error;
     }
   }

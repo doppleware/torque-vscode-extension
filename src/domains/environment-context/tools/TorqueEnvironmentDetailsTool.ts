@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import type { ApiClient } from "../../../api/ApiClient";
 import { getClient } from "../../../extension";
 
 interface EnvironmentDetailsParameters {
@@ -30,6 +31,18 @@ interface EnvironmentAnnotation {
   color: "FrogGreen" | "Grey" | null;
   filterable: boolean;
   last_updated: string;
+}
+
+interface GrainWithResources {
+  grain_name: string;
+  resources: {
+    name: string;
+    type: string;
+    dependency_identifier: string;
+    attributes?: Record<string, string>;
+    tags?: Record<string, string>;
+    depends_on?: string[];
+  }[];
 }
 
 interface EnvironmentDetails {
@@ -86,11 +99,18 @@ interface EnvironmentDetails {
   } | null;
   inputs: Record<string, unknown> | null;
   inputs_v2: Record<string, unknown>[] | null;
+  grain_resources?: GrainWithResources[];
 }
 
 export class TorqueEnvironmentDetailsTool
   implements vscode.LanguageModelTool<EnvironmentDetailsParameters>
 {
+  private client?: ApiClient;
+
+  constructor(client?: ApiClient) {
+    this.client = client;
+  }
+
   prepareInvocation(
     options: vscode.LanguageModelToolInvocationOptions<EnvironmentDetailsParameters>
   ): vscode.PreparedToolInvocation {
@@ -193,7 +213,7 @@ export class TorqueEnvironmentDetailsTool
   }
 
   protected getApiClient() {
-    return getClient();
+    return this.client ?? getClient();
   }
 
   public async getEnvironmentDetailsJson(

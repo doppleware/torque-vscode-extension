@@ -75,12 +75,20 @@ const isPortAvailable = (port: number): Promise<boolean> => {
 
 async function initializeClient(
   settingsManager: SettingsManager,
-  shouldRegisterMcp = false,
   showSuccessMessage = false,
-  showUserMessages = false
+  showErrorMessages = false,
+  reinitialize = false
 ): Promise<void> {
+  logger.info(
+    `initializeClient called with showSuccessMessage=${showSuccessMessage}, showErrorMessages=${showErrorMessages}, reinitialize=${reinitialize}`
+  );
+
   const url = await settingsManager.getSetting<string>("url");
   const token = await settingsManager.getSetting<string>("token");
+
+  logger.info(
+    `Got settings: url=${url ? "present" : "missing"}, token=${token ? "present" : "missing"}`
+  );
 
   if (!token || !url) {
     logger.debug("Client initialization skipped - missing URL or token");
@@ -88,10 +96,15 @@ async function initializeClient(
   }
 
   logger.info(`Initializing API client with URL: ${url}`);
-  // Initialize the client
-  apiClient = new ApiClient(url, token);
 
-  // Register MCP server if requested and both URL and token are available
+  // Reinitialize if requested or if client doesn't exist
+  if (reinitialize || !apiClient) {
+    // Initialize the client
+    apiClient = new ApiClient(url, token);
+  }
+
+  // Always register MCP server when both URL and token are available
+  const shouldRegisterMcp = true;
   if (shouldRegisterMcp) {
     try {
       logger.info("Registering MCP server");
@@ -100,7 +113,7 @@ async function initializeClient(
         mcpServerDisposable,
         url,
         token,
-        showUserMessages
+        showErrorMessages
       );
 
       // Enable required VS Code settings
@@ -117,7 +130,7 @@ async function initializeClient(
       vscode.window.showErrorMessage(
         `Failed to register MCP server: ${errorMessage}`
       );
-      throw error;
+      // Don't throw - allow setup to complete even if MCP fails
     }
   }
 }
@@ -296,7 +309,8 @@ export async function activate(context: vscode.ExtensionContext) {
   const settingsManager = new SettingsManager(context);
 
   // Initialize client and MCP server if configured
-  await initializeClient(settingsManager, true);
+  // (showSuccessMessage=false during activation)
+  await initializeClient(settingsManager, false);
 
   // Register agent instructions for VS Code Copilot
   await registerAgentInstructions(context);
@@ -694,9 +708,7 @@ export async function activate(context: vscode.ExtensionContext) {
           logger.info(
             `[URI Handler] Successfully handled URI: ${uri.toString()}`
           );
-          vscode.window.showInformationMessage(
-            `Successfully processed: ${uri.toString()}`
-          );
+          // Success notification is handled by individual route handlers
         }
       } catch (error) {
         logger.error(

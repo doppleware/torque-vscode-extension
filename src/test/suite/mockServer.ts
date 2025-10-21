@@ -11,10 +11,17 @@ export interface EnvironmentRequest {
   environmentId: string;
 }
 
+export interface IntrospectionRequest {
+  spaceName: string;
+  environmentId: string;
+  assetName: string;
+}
+
 export class MockTorqueServer {
   private server: http.Server | null = null;
   private port = 0;
   private requestLog: EnvironmentRequest[] = [];
+  private introspectionRequestLog: IntrospectionRequest[] = [];
   private authRequired: boolean;
 
   constructor(options: MockServerOptions = {}) {
@@ -66,8 +73,16 @@ export class MockTorqueServer {
     return [...this.requestLog];
   }
 
+  getIntrospectionRequestLog(): IntrospectionRequest[] {
+    return [...this.introspectionRequestLog];
+  }
+
   clearRequestLog(): void {
     this.requestLog = [];
+  }
+
+  clearIntrospectionRequestLog(): void {
+    this.introspectionRequestLog = [];
   }
 
   private handleRequest(
@@ -113,6 +128,54 @@ export class MockTorqueServer {
     ) {
       res.writeHead(200);
       res.end(JSON.stringify({ status: "ok" }));
+      return;
+    }
+
+    // Handle GET /api/spaces (list spaces)
+    if (
+      req.method === "GET" &&
+      pathParts.length === 2 &&
+      pathParts[0] === "api" &&
+      pathParts[1] === "spaces"
+    ) {
+      res.writeHead(200);
+      res.end(
+        JSON.stringify([
+          {
+            name: "test-space",
+            description: "Test space for integration tests"
+          },
+          { name: "production", description: "Production space" }
+        ])
+      );
+      return;
+    }
+
+    // Handle GET /api/spaces/{spaceName}/environments/{environmentId}/introspection/{assetName}
+    if (
+      req.method === "GET" &&
+      pathParts.length === 7 &&
+      pathParts[0] === "api" &&
+      pathParts[1] === "spaces" &&
+      pathParts[3] === "environments" &&
+      pathParts[5] === "introspection"
+    ) {
+      const spaceName = decodeURIComponent(pathParts[2]);
+      const environmentId = decodeURIComponent(pathParts[4]);
+      const assetName = decodeURIComponent(pathParts[6]);
+
+      // Log the introspection request
+      this.introspectionRequestLog.push({
+        spaceName,
+        environmentId,
+        assetName
+      });
+
+      // Generate mock introspection response
+      const mockResponse = this.generateMockIntrospectionData(assetName);
+
+      res.writeHead(200);
+      res.end(JSON.stringify(mockResponse));
       return;
     }
 
@@ -172,9 +235,36 @@ export class MockTorqueServer {
       is_workflow: false,
       is_published: true,
       details: {
-        state: { status: "Active" },
+        state: {
+          status: "Active",
+          grains: [
+            {
+              name: "test-grain-1",
+              kind: "terraform",
+              state: {
+                current_state: "Deployed"
+              }
+            },
+            {
+              name: "test-grain-2",
+              kind: "helm",
+              state: {
+                current_state: "Deployed"
+              }
+            }
+          ]
+        },
         id: environmentId,
-        definition: { name: `Environment ${environmentId}` },
+        definition: {
+          name: `Environment ${environmentId}`,
+          inputs: [
+            {
+              name: "test-input",
+              value: "test-value"
+            }
+          ],
+          outputs: []
+        },
         computed_status: { health: "Healthy" },
         estimated_launch_duration_in_seconds: 300
       },
@@ -229,6 +319,47 @@ export class MockTorqueServer {
       },
       inputs: {},
       inputs_v2: []
+    };
+  }
+
+  private generateMockIntrospectionData(assetName: string): any {
+    // Generate mock resources based on asset name
+    const resources = [
+      {
+        name: `${assetName}-resource-1`,
+        type: "aws_instance",
+        dependency_identifier: `aws_instance.${assetName}-resource-1`,
+        attributes: {
+          instance_type: "t3.medium",
+          ami: "ami-12345678",
+          availability_zone: "us-east-1a"
+        },
+        tags: {
+          Name: `${assetName}-instance`,
+          Environment: "test",
+          ManagedBy: "Torque"
+        },
+        depends_on: []
+      },
+      {
+        name: `${assetName}-resource-2`,
+        type: "aws_security_group",
+        dependency_identifier: `aws_security_group.${assetName}-resource-2`,
+        attributes: {
+          vpc_id: "vpc-12345678",
+          description: "Security group for test"
+        },
+        tags: {
+          Name: `${assetName}-sg`,
+          Environment: "test"
+        },
+        depends_on: [`aws_instance.${assetName}-resource-1`]
+      }
+    ];
+
+    return {
+      resources,
+      errors: []
     };
   }
 }

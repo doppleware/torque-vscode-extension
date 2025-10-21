@@ -23,12 +23,16 @@ suite("End-to-End Integration Test", () => {
   let originalShowInputBox: typeof vscode.window.showInputBox;
   let originalShowInformationMessage: typeof vscode.window.showInformationMessage;
   let originalShowErrorMessage: typeof vscode.window.showErrorMessage;
+  let originalShowWarningMessage: typeof vscode.window.showWarningMessage;
+  let originalShowQuickPick: typeof vscode.window.showQuickPick;
 
   suiteSetup(async () => {
     // Store original VS Code functions
     originalShowInputBox = vscode.window.showInputBox;
     originalShowInformationMessage = vscode.window.showInformationMessage;
     originalShowErrorMessage = vscode.window.showErrorMessage;
+    originalShowWarningMessage = vscode.window.showWarningMessage;
+    originalShowQuickPick = vscode.window.showQuickPick;
 
     // Start mock server
     mockServer = new MockTorqueServer({ requireAuth: true });
@@ -44,6 +48,8 @@ suite("End-to-End Integration Test", () => {
     (vscode.window as any).showInformationMessage =
       originalShowInformationMessage;
     (vscode.window as any).showErrorMessage = originalShowErrorMessage;
+    (vscode.window as any).showWarningMessage = originalShowWarningMessage;
+    (vscode.window as any).showQuickPick = originalShowQuickPick;
 
     // Stop mock server
     if (mockServer) {
@@ -61,6 +67,8 @@ suite("End-to-End Integration Test", () => {
     (vscode.window as any).showInformationMessage =
       originalShowInformationMessage;
     (vscode.window as any).showErrorMessage = originalShowErrorMessage;
+    (vscode.window as any).showWarningMessage = originalShowWarningMessage;
+    (vscode.window as any).showQuickPick = originalShowQuickPick;
   });
 
   /**
@@ -106,6 +114,12 @@ suite("End-to-End Integration Test", () => {
       }
       return undefined;
     };
+
+    // Mock warning messages (for space fetching warnings)
+    (vscode.window as any).showWarningMessage = async () => undefined;
+
+    // Mock space selection (skip space selection)
+    (vscode.window as any).showQuickPick = async () => undefined;
 
     // Mock error messages to detect failures
     let errorOccurred = false;

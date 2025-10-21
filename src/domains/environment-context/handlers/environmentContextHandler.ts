@@ -3,17 +3,143 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import vscode from "vscode";
+import type { ApiClient } from "../../../api/ApiClient";
 import { TorqueEnvironmentDetailsTool } from "../tools/TorqueEnvironmentDetailsTool";
 import { getIdeCommand } from "../../../ides/ideCommands";
+import { getClient } from "../../../extension";
+import { logger } from "../../../utils/Logger";
+import { EnvironmentDetailsTransformer } from "../transformers/EnvironmentDetailsTransformer";
 
 interface EnvironmentContextParams {
   space_name: string;
   environment_id: string;
 }
 
+/**
+ * Extracts grain names from the environment blueprint definition
+ */
+const extractGrainNames = (environmentDetails: unknown): string[] => {
+  const grainNames: string[] = [];
+
+  try {
+    // First check if environmentDetails has the expected structure
+    if (!environmentDetails || typeof environmentDetails !== "object") {
+      logger.info("Invalid environment details structure");
+      return grainNames;
+    }
+
+    const envDetails = environmentDetails as {
+      details?: {
+        state?: {
+          grains?: { name?: string }[];
+        };
+      };
+    };
+
+    // The grains are in details.state.grains, not details.definition.grains
+    const stateGrains = envDetails.details?.state?.grains;
+
+    if (!stateGrains || !Array.isArray(stateGrains)) {
+      logger.info("No grains array found in environment state");
+      return grainNames;
+    }
+
+    stateGrains.forEach((grain) => {
+      if (grain.name) {
+        grainNames.push(grain.name);
+      }
+    });
+
+    logger.info(
+      `Extracted ${grainNames.length} grain names: ${grainNames.join(", ")}`
+    );
+  } catch (error) {
+    logger.error(
+      `Error extracting grain names: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
+  }
+
+  return grainNames;
+};
+
+/**
+ * Fetches introspection resources for each grain
+ */
+const fetchGrainResources = async (
+  spaceName: string,
+  environmentId: string,
+  grainNames: string[],
+  client?: ApiClient
+): Promise<
+  {
+    grain_name: string;
+    resources: {
+      name: string;
+      type: string;
+      dependency_identifier: string;
+      attributes?: Record<string, string>;
+      tags?: Record<string, string>;
+      depends_on?: string[];
+    }[];
+  }[]
+> => {
+  const grainResourcesList: {
+    grain_name: string;
+    resources: {
+      name: string;
+      type: string;
+      dependency_identifier: string;
+      attributes?: Record<string, string>;
+      tags?: Record<string, string>;
+      depends_on?: string[];
+    }[];
+  }[] = [];
+
+  if (grainNames.length === 0) {
+    logger.info("No grains to fetch resources for");
+    return grainResourcesList;
+  }
+
+  const apiClient = client ?? getClient();
+  const spacesService = apiClient.spaces;
+
+  // Fetch introspection data for each grain
+  for (const grainName of grainNames) {
+    try {
+      logger.info(`Fetching introspection for grain: ${grainName}`);
+      const introspectionData = await spacesService.getEnvironmentIntrospection(
+        spaceName,
+        environmentId,
+        grainName
+      );
+
+      grainResourcesList.push({
+        grain_name: grainName,
+        resources: introspectionData.resources || []
+      });
+
+      logger.info(
+        `Fetched ${introspectionData.resources?.length ?? 0} resources for grain: ${grainName}`
+      );
+    } catch (error) {
+      logger.error(
+        `Error fetching introspection for grain ${grainName}: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
+      // Continue with other grains even if one fails
+      grainResourcesList.push({
+        grain_name: grainName,
+        resources: []
+      });
+    }
+  }
+
+  return grainResourcesList;
+};
+
 export const attachEnvironmentFileToChatContext = async (
   spaceName: string,
-  environmentId: string
+  environmentId: string,
+  client?: ApiClient
 ) => {
   try {
     // Validate input parameters
@@ -22,7 +148,7 @@ export const attachEnvironmentFileToChatContext = async (
     }
 
     // Create tool instance and fetch environment details directly as JSON
-    const environmentTool = new TorqueEnvironmentDetailsTool();
+    const environmentTool = new TorqueEnvironmentDetailsTool(client);
 
     // Get raw environment details JSON directly from the API
     const environmentDetails = await environmentTool.getEnvironmentDetailsJson(
@@ -34,6 +160,23 @@ export const attachEnvironmentFileToChatContext = async (
       throw new Error("No environment details retrieved");
     }
 
+    // Extract grain names from the blueprint definition
+    const grainNames = extractGrainNames(environmentDetails);
+
+    // Fetch introspection resources for each grain
+    const grainResources = await fetchGrainResources(
+      spaceName,
+      environmentId,
+      grainNames,
+      client
+    );
+
+    // Transform environment details to simplified schema
+    const simplifiedDetails = EnvironmentDetailsTransformer.transform(
+      environmentDetails,
+      grainResources
+    );
+
     // Create temporary file with JSON extension
     const tempDir = os.tmpdir();
     const fileName = `environment-${spaceName}-${environmentId}-${formatISO(
@@ -44,10 +187,10 @@ export const attachEnvironmentFileToChatContext = async (
     )}.json`;
     const filePath = path.join(tempDir, fileName);
 
-    // Write JSON content to file
+    // Write simplified JSON content to file
     fs.writeFileSync(
       filePath,
-      JSON.stringify(environmentDetails, null, 2),
+      EnvironmentDetailsTransformer.toJSON(simplifiedDetails),
       "utf8"
     );
 
@@ -62,7 +205,7 @@ export const attachEnvironmentFileToChatContext = async (
     );
 
     vscode.window.showInformationMessage(
-      `Environment details JSON for ${environmentId} have been attached to the chat context`
+      "Environment details have been added to the chat context"
     );
   } catch (error: unknown) {
     // eslint-disable-next-line no-console
