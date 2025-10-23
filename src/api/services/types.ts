@@ -242,3 +242,26 @@ export interface IntrospectionResponse {
   resources: IntrospectionResource[];
   errors: unknown[];
 }
+
+export interface WorkflowInput {
+  name: string;
+  value: string | null;
+  type: string;
+  allowed_values: string[];
+}
+
+export interface WorkflowInstantiation {
+  id: string;
+  name: string;
+  scope: string;
+  inputs: WorkflowInput[];
+  env_references: unknown[];
+  blueprint_name: string;
+  blueprint_store: string;
+  triggers: unknown[];
+  enabled: boolean;
+}
+
+export interface WorkflowsResponse {
+  instantiations: WorkflowInstantiation[];
+}

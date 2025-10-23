@@ -6,7 +6,8 @@ import type {
   BlueprintValidationRequest,
   BlueprintValidationResponse,
   CatalogAssetResponse,
-  IntrospectionResponse
+  IntrospectionResponse,
+  WorkflowsResponse
 } from "./types";
 import { logger } from "../../utils/Logger";
 
@@ -203,6 +204,68 @@ export class SpacesService extends Service {
         );
       }
       logger.error("================================");
+      throw error;
+    }
+  }
+
+  /**
+   * Fetches workflows for a specific resource in an environment
+   *
+   * @param spaceName The space name
+   * @param environmentId The environment ID
+   * @param grainPath The grain path
+   * @param resourceId The resource identifier (e.g., Pod.hello-world-chart-a4d38-c49d66fb7-x7lrt)
+   * @returns Promise<WorkflowsResponse> Workflows available for the resource
+   */
+  async getResourceWorkflows(
+    spaceName: string,
+    environmentId: string,
+    grainPath: string,
+    resourceId: string
+  ): Promise<WorkflowsResponse> {
+    const url = `/api/spaces/${encodeURIComponent(spaceName)}/environments/${encodeURIComponent(environmentId)}/workflows_v2`;
+
+    logger.info("=== Resource Workflows API Request ===");
+    logger.info(`URL: ${url}`);
+    logger.info(`Space Name: ${spaceName}`);
+    logger.info(`Environment ID: ${environmentId}`);
+    logger.info(`Grain Path: ${grainPath}`);
+    logger.info(`Resource ID: ${resourceId}`);
+    logger.info("======================================");
+
+    try {
+      const response = await this.client.client.get<WorkflowsResponse>(url, {
+        params: {
+          grain_path: grainPath,
+          resource_id: resourceId
+        }
+      });
+
+      logger.info("=== Resource Workflows API Response ===");
+      logger.info(`Status: ${response.status}`);
+      logger.info(
+        `Workflows count: ${response.data.instantiations?.length ?? 0}`
+      );
+      logger.info("=======================================");
+
+      return response.data;
+    } catch (error) {
+      logger.error("=== Resource Workflows API Error ===");
+      logger.error(
+        `Error fetching workflows for resource: ${resourceId} in grain: ${grainPath}`
+      );
+      if (error && typeof error === "object" && "response" in error) {
+        const axiosError = error as {
+          response?: { status?: number; data?: unknown };
+        };
+        logger.error(
+          `HTTP Status: ${axiosError.response?.status ?? "unknown"}`
+        );
+        logger.error(
+          `Response Data: ${JSON.stringify(axiosError.response?.data ?? {}, null, 2)}`
+        );
+      }
+      logger.error("====================================");
       throw error;
     }
   }

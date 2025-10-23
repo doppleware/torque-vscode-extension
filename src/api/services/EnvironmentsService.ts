@@ -1,6 +1,6 @@
+import { logger } from "../../utils/Logger";
 import { Service } from "./Service";
 import type { EnvironmentListResponse } from "./types";
-import { logger } from "../../utils/Logger";
 
 export class EnvironmentsService extends Service {
   protected readonly basePath = "/api";

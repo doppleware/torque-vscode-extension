@@ -7,7 +7,10 @@ import { TorqueEnvironmentDetailsTool } from "../tools/TorqueEnvironmentDetailsT
 import { getIdeCommand } from "../../../ides/ideCommands";
 import { getClient } from "../../../extension";
 import { logger } from "../../../utils/Logger";
-import { EnvironmentDetailsTransformer } from "../transformers/EnvironmentDetailsTransformer";
+import {
+  EnvironmentDetailsTransformer,
+  type SimplifiedEnvironmentDetails
+} from "../transformers/EnvironmentDetailsTransformer";
 
 interface EnvironmentContextParams {
   space_name: string;
@@ -135,6 +138,100 @@ const fetchGrainResources = async (
   return grainResourcesList;
 };
 
+/**
+ * Fetches workflows for all resources in all grains and attaches them to the grains
+ * Groups workflows by workflow name and lists which resources they apply to
+ */
+const fetchAndAttachWorkflows = async (
+  spaceName: string,
+  environmentId: string,
+  simplifiedDetails: SimplifiedEnvironmentDetails,
+  client?: ApiClient
+): Promise<void> => {
+  const apiClient = client ?? getClient();
+  const spacesService = apiClient.spaces;
+
+  // Iterate through each grain
+  for (const grainObj of simplifiedDetails.grains) {
+    // Get the grain name (key) and details (value)
+    const grainName = Object.keys(grainObj)[0];
+    const grainDetails = grainObj[grainName];
+
+    if (!grainDetails?.resources || grainDetails.resources.length === 0) {
+      logger.info(
+        `No resources for grain: ${grainName}, skipping workflow fetch`
+      );
+      continue;
+    }
+
+    // Map to store workflows grouped by blueprint_name
+    const workflowMap = new Map<
+      string,
+      {
+        inputs: { name: string; type: string }[];
+        resources: Set<string>;
+      }
+    >();
+
+    // Fetch workflows for each resource in this grain
+    for (const resource of grainDetails.resources) {
+      try {
+        logger.info(
+          `Fetching workflows for resource: ${resource.name} in grain: ${grainName}`
+        );
+
+        const workflowsData = await spacesService.getResourceWorkflows(
+          spaceName,
+          environmentId,
+          grainDetails.path,
+          resource.name
+        );
+
+        // Process each workflow instantiation
+        for (const instantiation of workflowsData.instantiations || []) {
+          const workflowName = instantiation.blueprint_name;
+
+          if (!workflowMap.has(workflowName)) {
+            // First time seeing this workflow, create entry
+            workflowMap.set(workflowName, {
+              inputs: instantiation.inputs.map((input) => ({
+                name: input.name,
+                type: input.type
+              })),
+              resources: new Set()
+            });
+          }
+
+          // Add this resource to the workflow's resource list
+          workflowMap.get(workflowName)!.resources.add(resource.name);
+        }
+
+        logger.info(
+          `Found ${workflowsData.instantiations?.length ?? 0} workflows for resource: ${resource.name}`
+        );
+      } catch (error) {
+        logger.error(
+          `Error fetching workflows for resource ${resource.name}: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
+        // Continue with other resources even if one fails
+      }
+    }
+
+    // Convert the workflow map to the final array format
+    grainDetails.workflows = Array.from(workflowMap.entries()).map(
+      ([name, data]) => ({
+        name,
+        resources: Array.from(data.resources),
+        inputs: data.inputs
+      })
+    );
+
+    logger.info(
+      `Attached ${grainDetails.workflows.length} unique workflows to grain: ${grainName}`
+    );
+  }
+};
+
 export const attachEnvironmentFileToChatContext = async (
   spaceName: string,
   environmentId: string,
@@ -174,6 +271,14 @@ export const attachEnvironmentFileToChatContext = async (
     const simplifiedDetails = EnvironmentDetailsTransformer.transform(
       environmentDetails,
       grainResources
+    );
+
+    // Fetch and attach workflows for each grain's resources
+    await fetchAndAttachWorkflows(
+      spaceName,
+      environmentId,
+      simplifiedDetails,
+      client
     );
 
     // Extract environment name from metadata

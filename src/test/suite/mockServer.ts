@@ -179,6 +179,31 @@ export class MockTorqueServer {
       return;
     }
 
+    // Handle GET /api/spaces/{spaceName}/environments/{environmentId}/workflows_v2
+    if (
+      req.method === "GET" &&
+      pathParts.length === 6 &&
+      pathParts[0] === "api" &&
+      pathParts[1] === "spaces" &&
+      pathParts[3] === "environments" &&
+      pathParts[5] === "workflows_v2"
+    ) {
+      const spaceName = decodeURIComponent(pathParts[2]);
+      const environmentId = decodeURIComponent(pathParts[4]);
+
+      // Parse query parameters
+      const url = new URL(req.url || "", `http://localhost:${this.port}`);
+      const grainPath = url.searchParams.get("grain_path") || "";
+      const resourceId = url.searchParams.get("resource_id") || "";
+
+      // Generate mock workflows response
+      const mockResponse = this.generateMockWorkflowsData(resourceId);
+
+      res.writeHead(200);
+      res.end(JSON.stringify(mockResponse));
+      return;
+    }
+
     // Handle GET /api/spaces/{spaceName}/environments/{environmentId}
     if (
       req.method === "GET" &&
@@ -419,6 +444,68 @@ export class MockTorqueServer {
     return {
       resources,
       errors: []
+    };
+  }
+
+  private generateMockWorkflowsData(resourceId: string): any {
+    // Generate mock workflows based on resource ID
+    return {
+      instantiations: [
+        {
+          id: "workflow-1-id",
+          name: "kubectl_logs__instantiation__20251023_160510_199",
+          scope: "env_resource",
+          inputs: [
+            {
+              name: "target-namespace",
+              value: null,
+              type: "string",
+              allowed_values: []
+            }
+          ],
+          env_references: [],
+          blueprint_name: "kubectl_logs",
+          blueprint_store: "torque_iac",
+          triggers: [
+            {
+              next_occurrence: null,
+              event: [],
+              cron: null,
+              type: "manual",
+              overridable: false,
+              pauseUntil: null
+            }
+          ],
+          enabled: true
+        },
+        {
+          id: "workflow-2-id",
+          name: "restart_pod__instantiation__20251023_160515_200",
+          scope: "env_resource",
+          inputs: [
+            {
+              name: "force",
+              value: null,
+              type: "boolean",
+              allowed_values: []
+            }
+          ],
+          env_references: [],
+          blueprint_name: "restart_pod",
+          blueprint_store: "torque_iac",
+          triggers: [
+            {
+              next_occurrence: null,
+              event: [],
+              cron: null,
+              type: "manual",
+              overridable: false,
+              pauseUntil: null
+            }
+          ],
+          enabled: true
+        }
+      ]
     };
   }
 }

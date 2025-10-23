@@ -26,6 +26,17 @@ export interface GrainResource {
   type: string;
 }
 
+export interface WorkflowInputDef {
+  name: string;
+  type: string;
+}
+
+export interface GrainWorkflow {
+  name: string;
+  resources: string[];
+  inputs: WorkflowInputDef[];
+}
+
 export interface GrainDetails {
   path: string;
   kind: string;
@@ -33,6 +44,7 @@ export interface GrainDetails {
   inputs: InputValue[];
   state: GrainState;
   resources: GrainResource[];
+  workflows: GrainWorkflow[];
 }
 
 export interface SimplifiedEnvironmentDetails {
@@ -189,7 +201,8 @@ export class EnvironmentDetailsTransformer {
             matchingResources?.resources.map((r) => ({
               name: r.name,
               type: r.type
-            })) ?? []
+            })) ?? [],
+          workflows: [] // Will be populated by handler after fetching workflow data
         };
 
         // Return as a single-key object with grain name as the key
