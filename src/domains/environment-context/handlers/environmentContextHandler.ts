@@ -199,13 +199,13 @@ export const attachEnvironmentFileToChatContext = async (
     const tempDir = os.tmpdir();
     // Sanitize the environment name for use in filename
     const sanitizedName = environmentName.replace(/[^a-zA-Z0-9-_]/g, "_");
-    const fileName = `${sanitizedName}.json`;
+    const fileName = `${sanitizedName}.yaml`;
     const filePath = path.join(tempDir, fileName);
 
-    // Write simplified JSON content to file
+    // Write simplified YAML content to file
     fs.writeFileSync(
       filePath,
-      EnvironmentDetailsTransformer.toJSON(simplifiedDetails),
+      EnvironmentDetailsTransformer.toYAML(simplifiedDetails),
       "utf8"
     );
 

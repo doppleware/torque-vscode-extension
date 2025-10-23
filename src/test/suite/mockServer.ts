@@ -240,23 +240,82 @@ export class MockTorqueServer {
           grains: [
             {
               name: "test-grain-1",
+              path: "infrastructure/terraform",
               kind: "terraform",
+              execution_host: "aws-agent",
+              inputs: [
+                {
+                  name: "instance_type",
+                  value: "t3.medium"
+                },
+                {
+                  name: "region",
+                  value: "us-east-1"
+                }
+              ],
               state: {
-                current_state: "Deployed"
+                current_state: "Deployed",
+                stages: [
+                  {
+                    activities: [
+                      {
+                        id: "activity-1-prepare",
+                        name: "Prepare",
+                        status: "Done"
+                      },
+                      {
+                        id: "activity-1-apply",
+                        name: "Apply",
+                        status: "Done"
+                      }
+                    ]
+                  }
+                ]
               }
             },
             {
               name: "test-grain-2",
+              path: "charts/hello-world",
               kind: "helm",
+              execution_host: "k8s-agent",
+              inputs: [
+                {
+                  name: "replicaCount",
+                  value: "1"
+                },
+                {
+                  name: "target-namespace",
+                  value: "vido-sb"
+                }
+              ],
               state: {
-                current_state: "Deployed"
+                current_state: "Deployed",
+                stages: [
+                  {
+                    activities: [
+                      {
+                        id: "activity-2-prepare",
+                        name: "Prepare",
+                        status: "Done"
+                      },
+                      {
+                        id: "activity-2-install",
+                        name: "Install",
+                        status: "Done"
+                      }
+                    ]
+                  }
+                ]
               }
             }
           ]
         },
         id: environmentId,
         definition: {
-          name: `Environment ${environmentId}`,
+          metadata: {
+            name: `Environment ${environmentId}`,
+            space_name: spaceName
+          },
           inputs: [
             {
               name: "test-input",
@@ -265,7 +324,7 @@ export class MockTorqueServer {
           ],
           outputs: []
         },
-        computed_status: { health: "Healthy" },
+        computed_status: "Active",
         estimated_launch_duration_in_seconds: 300
       },
       cost: {

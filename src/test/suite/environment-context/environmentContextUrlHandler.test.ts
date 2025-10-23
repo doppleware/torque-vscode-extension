@@ -1,6 +1,7 @@
 import * as assert from "assert";
 import * as vscode from "vscode";
 import * as fs from "fs";
+import * as yaml from "js-yaml";
 import { MockTorqueServer } from "../mockServer";
 import { ApiClient } from "../../../api/ApiClient";
 
@@ -258,56 +259,110 @@ suite("Environment Context URL Handler Integration Tests", () => {
         assert.ok(fileUri, "Should have file URI");
         assert.ok(fileUri.fsPath, "Should have file path");
 
+        // Verify the file is a YAML file
+        assert.ok(
+          fileUri.fsPath.endsWith(".yaml"),
+          "File should have .yaml extension"
+        );
+
         // Read and verify the file content
         const fileContent = fs.readFileSync(fileUri.fsPath, "utf8");
-        const parsedContent = JSON.parse(fileContent);
+        const parsedContent = yaml.load(fileContent) as any;
 
-        // Verify simplified schema structure
-        assert.ok(parsedContent.state, "Should have state");
+        // Verify new simplified schema structure
+        assert.ok(parsedContent.environment_id, "Should have environment_id");
+        assert.ok(parsedContent.space_name, "Should have space_name");
+        assert.strictEqual(
+          parsedContent.space_name,
+          spaceName,
+          "Space name should match"
+        );
+        assert.ok(parsedContent.status, "Should have status");
         assert.ok(
           Array.isArray(parsedContent.inputs),
-          "Should have inputs array"
+          "Should have inputs array at environment level"
+        );
+        assert.strictEqual(
+          parsedContent.inputs.length,
+          1,
+          "Should have 1 environment-level input"
+        );
+        assert.strictEqual(
+          parsedContent.inputs[0].name,
+          "test-input",
+          "Environment input should have correct name"
+        );
+        assert.strictEqual(
+          parsedContent.inputs[0].value,
+          "test-value",
+          "Environment input should have correct value"
         );
         assert.ok(
-          Array.isArray(parsedContent.outputs),
-          "Should have outputs array"
-        );
-        assert.ok(
-          Array.isArray(parsedContent.grain_resources),
-          "Should have grain_resources array"
+          Array.isArray(parsedContent.grains),
+          "Should have grains array"
         );
 
-        // Verify grain_resources content
+        // Verify grains content
         assert.strictEqual(
-          parsedContent.grain_resources.length,
+          parsedContent.grains.length,
           2,
-          "Should have 2 grain resources"
+          "Should have 2 grains"
         );
 
-        const grain1Resources = parsedContent.grain_resources.find(
-          (g: any) => g.grain_name === "test-grain-1"
-        );
-        assert.ok(grain1Resources, "Should have resources for test-grain-1");
+        // Verify grain structure - grains are objects with grain name as key
+        const grain1 = parsedContent.grains[0];
+        assert.ok(grain1["test-grain-1"], "Should have test-grain-1 grain");
+
+        const grain1Details = grain1["test-grain-1"];
+        assert.ok(grain1Details.path, "Grain should have path");
+        assert.ok(grain1Details.kind, "Grain should have kind");
         assert.ok(
-          Array.isArray(grain1Resources.resources),
-          "Should have resources array for grain 1"
+          grain1Details.execution_host,
+          "Grain should have execution_host"
+        );
+        assert.ok(
+          Array.isArray(grain1Details.inputs),
+          "Grain should have inputs array"
         );
         assert.strictEqual(
-          grain1Resources.resources.length,
+          grain1Details.inputs.length,
+          2,
+          "Grain should have 2 inputs"
+        );
+        assert.strictEqual(
+          grain1Details.inputs[0].name,
+          "instance_type",
+          "Grain input should have correct name"
+        );
+        assert.strictEqual(
+          grain1Details.inputs[0].value,
+          "t3.medium",
+          "Grain input should have correct value"
+        );
+        assert.ok(grain1Details.state, "Grain should have state");
+        assert.ok(
+          grain1Details.state.current_state,
+          "Grain state should have current_state"
+        );
+        assert.ok(
+          Array.isArray(grain1Details.state.activities),
+          "Grain state should have activities array"
+        );
+        assert.ok(
+          Array.isArray(grain1Details.resources),
+          "Grain should have resources array"
+        );
+
+        // Verify resources structure (only name and type)
+        assert.strictEqual(
+          grain1Details.resources.length,
           2,
           "Should have 2 resources for grain 1"
         );
 
-        // Verify resource structure
-        const resource = grain1Resources.resources[0];
+        const resource = grain1Details.resources[0];
         assert.ok(resource.name, "Resource should have name");
         assert.ok(resource.type, "Resource should have type");
-        assert.ok(
-          resource.dependency_identifier,
-          "Resource should have dependency_identifier"
-        );
-        assert.ok(resource.attributes, "Resource should have attributes");
-        assert.ok(resource.tags, "Resource should have tags");
 
         // Verify simplified schema excludes unnecessary fields
         assert.strictEqual(
@@ -324,6 +379,16 @@ suite("Environment Context URL Handler Integration Tests", () => {
           parsedContent.cost,
           undefined,
           "Should not include cost"
+        );
+        assert.strictEqual(
+          parsedContent.state,
+          undefined,
+          "Should not include old state field"
+        );
+        assert.strictEqual(
+          parsedContent.outputs,
+          undefined,
+          "Should not include outputs field"
         );
 
         // Verify notification message
