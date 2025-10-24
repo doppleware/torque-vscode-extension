@@ -1,0 +1,61 @@
+2025-10-23,Roni Dover,updated environment context to include workflows as well
+2025-10-23,Roni Dover,fixing bugs and refactoring the injected environment
+2025-10-21,Roni Dover,show running envs for blueprint
+2025-10-20,Roni Dover,cleanups
+2025-10-20,Roni Dover,Merge branch 'main' of github.com:doppleware/torque-vscode-extension
+2025-10-20,Roni Dover,fixing lints
+2025-10-20,Roni Dover,Merge pull request #27 from doppleware/dependabot/npm_and_yarn/esbuild-0.25.11
+2025-10-21,dependabot[bot],deps(deps-dev): bump esbuild from 0.25.10 to 0.25.11
+2025-10-20,Roni Dover,Merge branch 'main' of github.com:doppleware/torque-vscode-extension
+2025-10-20,Roni Dover,1. Improved autocomplete of grains. 2. Added validate action
+2025-10-20,dependabot[bot],deps(deps-dev): bump typescript-eslint from 8.46.0 to 8.46.1 (#26)
+2025-10-20,dependabot[bot],deps(deps-dev): bump @eslint/js from 9.37.0 to 9.38.0 (#25)
+2025-10-20,dependabot[bot],deps(deps-dev): bump eslint from 9.37.0 to 9.38.0 (#24)
+2025-10-19,Roni Dover,Merge branch 'main' of github.com:doppleware/torque-vscode-extension
+2025-10-19,Roni Dover,fixed lints
+2025-10-19,dependabot[bot],deps(deps-dev): bump @vscode/test-cli from 0.0.11 to 0.0.12 (#23)
+2025-10-19,Roni Dover,auto complete helm grains
+2025-10-18,Roni Dover,active space selection with repo filtering
+2025-10-18,Roni Dover,added lens
+2025-10-16,Roni Dover,added spec
+2025-10-13,dependabot[bot],deps(deps-dev): bump lint-staged from 16.2.3 to 16.2.4 (#22)
+2025-10-13,dependabot[bot],deps(deps-dev): bump typescript-eslint from 8.45.0 to 8.46.0 (#21)
+2025-10-13,dependabot[bot],deps(deps-dev): bump @types/vscode from 1.104.0 to 1.105.0 (#20)
+2025-10-07,Roni Dover,fixed security issue
+2025-10-07,Roni Dover,Merge branch 'main' of github.com:doppleware/torque-vscode-extension
+2025-10-07,Roni Dover,added template for blueprints
+2025-10-06,dependabot[bot],deps(deps-dev): bump typescript-eslint from 8.44.1 to 8.45.0 (#19)
+2025-10-06,dependabot[bot],deps(deps-dev): bump eslint from 9.36.0 to 9.37.0 (#18)
+2025-10-06,dependabot[bot],deps(deps-dev): bump jiti from 2.6.0 to 2.6.1 (#17)
+2025-10-06,dependabot[bot],deps(deps-dev): bump @eslint/js from 9.36.0 to 9.37.0 (#16)
+2025-10-06,dependabot[bot],deps(deps-dev): bump mocha from 11.7.2 to 11.7.4 (#15)
+2025-10-06,dependabot[bot],deps(deps-dev): bump typescript from 5.9.2 to 5.9.3 (#14)
+2025-10-01,Roni Dover,Merge branch 'main' of github.com:doppleware/torque-vscode-extension
+2025-10-01,Roni Dover,removing legacy functionality
+2025-09-29,dependabot[bot],deps(deps-dev): bump typescript from 5.8.3 to 5.9.2 (#13)
+2025-09-29,dependabot[bot],deps(deps-dev): bump jiti from 2.5.1 to 2.6.0 (#11)
+2025-09-29,dependabot[bot],deps(deps-dev): bump @vscode/vsce from 3.6.1 to 3.6.2 (#12)
+2025-09-29,dependabot[bot],deps(deps-dev): bump lint-staged from 16.1.4 to 16.2.3 (#10)
+2025-09-27,Roni Dover,fixed readme
+2025-09-27,Roni Dover,fixed readme
+2025-09-27,Roni Dover,fixed readmne
+2025-09-27,Roni Dover,first time obnoarding
+2025-09-27,Roni Dover,placeholder texts
+2025-09-27,Roni Dover,fixed
+2025-09-26,Roni Dover,updated naming
+2025-09-26,Roni Dover,first release
+2025-09-24,Roni Dover,updated server
+2025-09-23,Roni Dover,updated workflows
+2025-09-23,Roni Dover,linting
+2025-09-23,Roni Dover,updated package
+2025-09-23,Roni Dover,Merge branch 'main' of github.com:doppleware/torque-vscode-extension t# the commit.
+2025-09-23,Roni Dover,Fixing CI
+2025-09-23,dependabot[bot],deps(deps-dev): bump @vscode/vsce from 3.6.0 to 3.6.1 (#6)
+2025-09-23,dependabot[bot],deps(deps-dev): bump typescript-eslint from 8.38.0 to 8.44.1 (#4)
+2025-09-23,dependabot[bot],deps(deps-dev): bump eslint from 9.32.0 to 9.36.0 (#7)
+2025-09-23,dependabot[bot],deps(deps-dev): bump @types/vscode from 1.94.0 to 1.104.0 (#9)
+2025-09-23,dependabot[bot],deps(deps-dev): bump globals from 16.3.0 to 16.4.0 (#8)
+2025-09-23,dependabot[bot],deps(deps): bump axios from 1.11.0 to 1.12.2 (#5)
+2025-09-23,dependabot[bot],deps(deps-dev): bump esbuild from 0.25.8 to 0.25.10 (#3)
+2025-09-23,dependabot[bot],deps(deps): bump path-to-regexp from 8.2.0 to 8.3.0 (#1)
+2025-09-23,Roni Dover,initial commit

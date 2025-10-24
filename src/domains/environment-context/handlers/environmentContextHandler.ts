@@ -232,124 +232,194 @@ const fetchAndAttachWorkflows = async (
   }
 };
 
+/**
+ * Internal function that performs the actual work of fetching environment details
+ * Used by the public wrapper with progress reporting
+ */
+const attachEnvironmentFileToChatContextInternal = async (
+  spaceName: string,
+  environmentId: string,
+  client?: ApiClient,
+  progress?: vscode.Progress<{ message?: string; increment?: number }>
+) => {
+  // Validate input parameters
+  if (!spaceName || !environmentId) {
+    throw new Error("Space name and environment ID are required");
+  }
+
+  // Step 1: Fetch environment details (20% of work)
+  progress?.report({
+    message: "Fetching environment details...",
+    increment: 0
+  });
+  const environmentTool = new TorqueEnvironmentDetailsTool(client);
+  const environmentDetails = await environmentTool.getEnvironmentDetailsJson(
+    spaceName,
+    environmentId
+  );
+
+  if (!environmentDetails) {
+    throw new Error("No environment details retrieved");
+  }
+
+  progress?.report({ increment: 20 });
+
+  // Step 2: Extract grain names and fetch resources (30% of work)
+  const grainNames = extractGrainNames(environmentDetails);
+  progress?.report({
+    message: `Fetching resources for ${grainNames.length} grain(s)...`,
+    increment: 10
+  });
+
+  const grainResources = await fetchGrainResources(
+    spaceName,
+    environmentId,
+    grainNames,
+    client
+  );
+
+  progress?.report({ increment: 20 });
+
+  // Step 3: Transform data (10% of work)
+  progress?.report({
+    message: "Processing environment data...",
+    increment: 10
+  });
+  const simplifiedDetails = EnvironmentDetailsTransformer.transform(
+    environmentDetails,
+    grainResources
+  );
+
+  progress?.report({ increment: 10 });
+
+  // Step 4: Fetch workflows (30% of work)
+  const totalResources = simplifiedDetails.grains.reduce((sum, grainObj) => {
+    const grainDetails = Object.values(grainObj)[0];
+    return sum + (grainDetails?.resources?.length ?? 0);
+  }, 0);
+
+  progress?.report({
+    message: `Fetching workflows for ${totalResources} resource(s)...`,
+    increment: 0
+  });
+
+  await fetchAndAttachWorkflows(
+    spaceName,
+    environmentId,
+    simplifiedDetails,
+    client
+  );
+
+  progress?.report({ increment: 20 });
+
+  // Step 5: Create and attach file (10% of work)
+  progress?.report({ message: "Creating context file...", increment: 0 });
+
+  // Extract environment name from metadata
+  let environmentName = environmentId; // Fallback to ID
+  try {
+    const envData = environmentDetails as {
+      details?: {
+        definition?: {
+          metadata?: {
+            name?: string;
+          };
+        };
+      };
+    };
+    environmentName =
+      envData.details?.definition?.metadata?.name ?? environmentId;
+  } catch {
+    // Use fallback if extraction fails
+    logger.warn("Could not extract environment name from metadata");
+  }
+
+  // Create temporary file with environment name
+  const tempDir = os.tmpdir();
+  // Sanitize the environment name for use in filename
+  const sanitizedName = environmentName.replace(/[^a-zA-Z0-9-_]/g, "_");
+  const fileName = `${sanitizedName}.yaml`;
+  const filePath = path.join(tempDir, fileName);
+
+  // Write simplified YAML content to file
+  fs.writeFileSync(
+    filePath,
+    EnvironmentDetailsTransformer.toYAML(simplifiedDetails),
+    "utf8"
+  );
+
+  progress?.report({ increment: 5 });
+
+  // Open chat and attach file
+  progress?.report({ message: "Attaching to chat...", increment: 0 });
+  const openChatCommand = getIdeCommand("OPEN_CHAT");
+  await vscode.commands.executeCommand(openChatCommand);
+
+  const attachFileToChatCommand = getIdeCommand("ATTACH_FILE_TO_CHAT");
+  await vscode.commands.executeCommand(
+    attachFileToChatCommand,
+    vscode.Uri.file(filePath)
+  );
+
+  progress?.report({ increment: 5 });
+
+  vscode.window.showInformationMessage(
+    "Environment details have been added to the chat context"
+  );
+};
+
+/**
+ * Attaches environment details to chat context with progress reporting
+ * This is the public API that wraps the internal implementation
+ */
 export const attachEnvironmentFileToChatContext = async (
   spaceName: string,
   environmentId: string,
   client?: ApiClient
-) => {
-  try {
-    // Validate input parameters
-    if (!spaceName || !environmentId) {
-      throw new Error("Space name and environment ID are required");
+): Promise<void> => {
+  return vscode.window.withProgress(
+    {
+      location: vscode.ProgressLocation.Notification,
+      title: "Loading Environment Context",
+      cancellable: false
+    },
+    async (progress) => {
+      try {
+        await attachEnvironmentFileToChatContextInternal(
+          spaceName,
+          environmentId,
+          client,
+          progress
+        );
+      } catch (error: unknown) {
+        // eslint-disable-next-line no-console
+        console.error(
+          "Error attaching environment file to chat context:",
+          error
+        );
+
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error";
+
+        // Provide specific error messages based on error type
+        let userMessage = `Failed to attach environment details to chat context: ${errorMessage}`;
+
+        if (errorMessage.includes("API request failed")) {
+          userMessage = `Unable to fetch environment details. Please check your Torque configuration and network connection.`;
+        } else if (errorMessage.includes("Space name and environment ID")) {
+          userMessage = `Invalid environment URL format. Please check the space name and environment ID.`;
+        } else if (
+          errorMessage.includes("ENOENT") ||
+          errorMessage.includes("permission")
+        ) {
+          userMessage = `Unable to create temporary file. Please check file system permissions.`;
+        }
+
+        vscode.window.showErrorMessage(userMessage);
+        throw error; // Re-throw to indicate failure
+      }
     }
-
-    // Create tool instance and fetch environment details directly as JSON
-    const environmentTool = new TorqueEnvironmentDetailsTool(client);
-
-    // Get raw environment details JSON directly from the API
-    const environmentDetails = await environmentTool.getEnvironmentDetailsJson(
-      spaceName,
-      environmentId
-    );
-
-    if (!environmentDetails) {
-      throw new Error("No environment details retrieved");
-    }
-
-    // Extract grain names from the blueprint definition
-    const grainNames = extractGrainNames(environmentDetails);
-
-    // Fetch introspection resources for each grain
-    const grainResources = await fetchGrainResources(
-      spaceName,
-      environmentId,
-      grainNames,
-      client
-    );
-
-    // Transform environment details to simplified schema
-    const simplifiedDetails = EnvironmentDetailsTransformer.transform(
-      environmentDetails,
-      grainResources
-    );
-
-    // Fetch and attach workflows for each grain's resources
-    await fetchAndAttachWorkflows(
-      spaceName,
-      environmentId,
-      simplifiedDetails,
-      client
-    );
-
-    // Extract environment name from metadata
-    let environmentName = environmentId; // Fallback to ID
-    try {
-      const envData = environmentDetails as {
-        details?: {
-          definition?: {
-            metadata?: {
-              name?: string;
-            };
-          };
-        };
-      };
-      environmentName =
-        envData.details?.definition?.metadata?.name ?? environmentId;
-    } catch {
-      // Use fallback if extraction fails
-      logger.warn("Could not extract environment name from metadata");
-    }
-
-    // Create temporary file with environment name
-    const tempDir = os.tmpdir();
-    // Sanitize the environment name for use in filename
-    const sanitizedName = environmentName.replace(/[^a-zA-Z0-9-_]/g, "_");
-    const fileName = `${sanitizedName}.yaml`;
-    const filePath = path.join(tempDir, fileName);
-
-    // Write simplified YAML content to file
-    fs.writeFileSync(
-      filePath,
-      EnvironmentDetailsTransformer.toYAML(simplifiedDetails),
-      "utf8"
-    );
-
-    // Open chat and attach file
-    const openChatCommand = getIdeCommand("OPEN_CHAT");
-    await vscode.commands.executeCommand(openChatCommand);
-
-    const attachFileToChatCommand = getIdeCommand("ATTACH_FILE_TO_CHAT");
-    await vscode.commands.executeCommand(
-      attachFileToChatCommand,
-      vscode.Uri.file(filePath)
-    );
-
-    vscode.window.showInformationMessage(
-      "Environment details have been added to the chat context"
-    );
-  } catch (error: unknown) {
-    // eslint-disable-next-line no-console
-    console.error("Error attaching environment file to chat context:", error);
-
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
-
-    // Provide specific error messages based on error type
-    let userMessage = `Failed to attach environment details to chat context: ${errorMessage}`;
-
-    if (errorMessage.includes("API request failed")) {
-      userMessage = `Unable to fetch environment details. Please check your Torque configuration and network connection.`;
-    } else if (errorMessage.includes("Space name and environment ID")) {
-      userMessage = `Invalid environment URL format. Please check the space name and environment ID.`;
-    } else if (
-      errorMessage.includes("ENOENT") ||
-      errorMessage.includes("permission")
-    ) {
-      userMessage = `Unable to create temporary file. Please check file system permissions.`;
-    }
-
-    vscode.window.showErrorMessage(userMessage);
-  }
+  );
 };
 
 /**

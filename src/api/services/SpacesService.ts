@@ -7,7 +7,11 @@ import type {
   BlueprintValidationResponse,
   CatalogAssetResponse,
   IntrospectionResponse,
-  WorkflowsResponse
+  WorkflowsResponse,
+  AllowedValuesRequest,
+  AllowedValuesResponse,
+  DeployEnvironmentRequest,
+  DeployEnvironmentResponse
 } from "./types";
 import { logger } from "../../utils/Logger";
 
@@ -254,6 +258,110 @@ export class SpacesService extends Service {
       logger.error(
         `Error fetching workflows for resource: ${resourceId} in grain: ${grainPath}`
       );
+      if (error && typeof error === "object" && "response" in error) {
+        const axiosError = error as {
+          response?: { status?: number; data?: unknown };
+        };
+        logger.error(
+          `HTTP Status: ${axiosError.response?.status ?? "unknown"}`
+        );
+        logger.error(
+          `Response Data: ${JSON.stringify(axiosError.response?.data ?? {}, null, 2)}`
+        );
+      }
+      logger.error("====================================");
+      throw error;
+    }
+  }
+
+  /**
+   * Get allowed values for blueprint inputs
+   *
+   * @param spaceName The space name
+   * @param request The allowed values request containing current input values and input definitions
+   * @returns Promise<AllowedValuesResponse> Allowed values for each input
+   */
+  async getInputAllowedValues(
+    spaceName: string,
+    request: AllowedValuesRequest
+  ): Promise<AllowedValuesResponse> {
+    const url = this.getUrl(
+      `spaces/${encodeURIComponent(spaceName)}/catalog/inputs_allowed_values`
+    );
+
+    logger.info("=== Input Allowed Values API Request ===");
+    logger.info(`URL: ${url}`);
+    logger.info(`Space: ${spaceName}`);
+    logger.info(`Request Payload: ${JSON.stringify(request, null, 2)}`);
+    logger.info("=========================================");
+
+    try {
+      const response = await this.client.client.post<AllowedValuesResponse>(
+        url,
+        request
+      );
+
+      logger.info("=== Input Allowed Values API Response ===");
+      logger.info(`Status: ${response.status}`);
+      logger.info(`Response: ${JSON.stringify(response.data, null, 2)}`);
+      logger.info("==========================================");
+
+      return response.data;
+    } catch (error) {
+      logger.error("=== Input Allowed Values API Error ===");
+      logger.error("Error fetching input allowed values");
+      if (error && typeof error === "object" && "response" in error) {
+        const axiosError = error as {
+          response?: { status?: number; data?: unknown };
+        };
+        logger.error(
+          `HTTP Status: ${axiosError.response?.status ?? "unknown"}`
+        );
+        logger.error(
+          `Response Data: ${JSON.stringify(axiosError.response?.data ?? {}, null, 2)}`
+        );
+      }
+      logger.error("=======================================");
+      throw error;
+    }
+  }
+
+  /**
+   * Deploy a blueprint environment
+   *
+   * @param spaceName The space name
+   * @param request The deploy environment request containing environment details and inputs
+   * @returns Promise<DeployEnvironmentResponse> Deployed environment information
+   */
+  async deployEnvironment(
+    spaceName: string,
+    request: DeployEnvironmentRequest
+  ): Promise<DeployEnvironmentResponse> {
+    const url = this.getUrl(
+      `spaces/${encodeURIComponent(spaceName)}/environments`
+    );
+
+    logger.info("=== Deploy Environment API Request ===");
+    logger.info(`URL: ${url}`);
+    logger.info(`Space: ${spaceName}`);
+    logger.info(`Request Payload: ${JSON.stringify(request, null, 2)}`);
+    logger.info("=======================================");
+
+    try {
+      const response = await this.client.client.post<DeployEnvironmentResponse>(
+        url,
+        request
+      );
+
+      logger.info("=== Deploy Environment API Response ===");
+      logger.info(`Status: ${response.status}`);
+      logger.info(`Response: ${JSON.stringify(response.data, null, 2)}`);
+      logger.info("========================================");
+
+      return response.data;
+    } catch (error) {
+      logger.error("=== Deploy Environment API Error ===");
+      logger.error("Error deploying environment");
       if (error && typeof error === "object" && "response" in error) {
         const axiosError = error as {
           response?: { status?: number; data?: unknown };

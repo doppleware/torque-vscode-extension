@@ -653,7 +653,8 @@ export async function activate(context: vscode.ExtensionContext) {
   // Register blueprint actions command
   const blueprintActionsCommand = registerBlueprintActionsCommand(
     settingsManager,
-    () => apiClient
+    () => apiClient,
+    context
   );
 
   // Register show blueprint environments command

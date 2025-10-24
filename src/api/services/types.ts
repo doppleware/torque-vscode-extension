@@ -265,3 +265,66 @@ export interface WorkflowInstantiation {
 export interface WorkflowsResponse {
   instantiations: WorkflowInstantiation[];
 }
+
+// Deploy types
+export interface InputDefinition {
+  name: string;
+  type: string;
+  style: string;
+  default_value: string | null;
+  default_value_v2: CatalogInputDefaultValue | null;
+  has_default_value: boolean;
+  sensitive: boolean;
+  description: string | null;
+  allowed_values: string[];
+  parameter_name: string | null;
+  pattern: string | null;
+  validation_description: string | null;
+  depends_on: string[];
+  source_name: string | null;
+  overrides: unknown[];
+  max_size_in_mb: number | null;
+  max_files: number | null;
+  allowed_formats: string[];
+}
+
+export interface AllowedValuesRequest {
+  input_values: Record<string, string>;
+  input_definitions: InputDefinition[];
+}
+
+export interface AllowedValueExtraDetails {
+  agent_type?: string;
+  quali_owned?: boolean;
+  status?: string;
+  details_type?: string;
+  [key: string]: unknown;
+}
+
+export interface AllowedValue {
+  value: string;
+  display_value: string | null;
+  extra_details: AllowedValueExtraDetails;
+}
+
+export interface AllowedValuesResponseItem {
+  errors: string[];
+  name: string;
+  allowed_values: AllowedValue[];
+}
+
+export type AllowedValuesResponse = AllowedValuesResponseItem[];
+
+export interface DeployEnvironmentRequest {
+  environment_name: string;
+  blueprint_name: string;
+  inputs: Record<string, string>;
+  duration?: string;
+  automation?: boolean;
+  description?: string;
+}
+
+export interface DeployEnvironmentResponse {
+  id: string;
+  ticket_id: string | null;
+}
