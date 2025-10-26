@@ -233,6 +233,69 @@ const fetchAndAttachWorkflows = async (
 };
 
 /**
+ * Searches for a YAML file with the blueprint name in the workspace and opens it if found
+ * @param searchName - The blueprint name (or environment name as fallback) to search for
+ */
+const searchAndOpenEnvironmentFile = async (
+  searchName: string
+): Promise<void> => {
+  try {
+    logger.info(
+      `Searching for blueprint file: ${searchName}.yaml or ${searchName}.yml`
+    );
+
+    // Search specifically for .yaml and .yml files with the blueprint name
+    const searchPatterns = [
+      `**/${searchName}.yaml`,
+      `**/${searchName}.yml`,
+      `**/*${searchName}*.yaml`,
+      `**/*${searchName}*.yml`
+    ];
+
+    let foundFiles: vscode.Uri[] = [];
+
+    for (const pattern of searchPatterns) {
+      logger.info(`Trying pattern: ${pattern}`);
+      const files = await vscode.workspace.findFiles(
+        pattern,
+        "**/node_modules/**", // Exclude node_modules
+        10 // Limit to 10 files
+      );
+
+      if (files.length > 0) {
+        logger.info(
+          `Found ${files.length} file(s) matching pattern: ${pattern}`
+        );
+        foundFiles = files;
+        break;
+      }
+    }
+
+    if (foundFiles.length === 0) {
+      logger.info(`No YAML files found matching blueprint name: ${searchName}`);
+      return;
+    }
+
+    // Open the first matching file
+    const fileToOpen = foundFiles[0];
+    logger.info(`Opening blueprint file: ${fileToOpen.fsPath}`);
+
+    const document = await vscode.workspace.openTextDocument(fileToOpen);
+    await vscode.window.showTextDocument(document, {
+      preview: false,
+      viewColumn: vscode.ViewColumn.One
+    });
+
+    logger.info(`Successfully opened blueprint file: ${fileToOpen.fsPath}`);
+  } catch (error) {
+    logger.warn(
+      `Could not search for or open blueprint file: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
+    // Don't throw - this is a nice-to-have feature, not critical
+  }
+};
+
+/**
  * Internal function that performs the actual work of fetching environment details
  * Used by the public wrapper with progress reporting
  */
@@ -315,23 +378,50 @@ const attachEnvironmentFileToChatContextInternal = async (
   // Step 5: Create and attach file (10% of work)
   progress?.report({ message: "Creating context file...", increment: 0 });
 
-  // Extract environment name from metadata
+  // Log the full environment details for debugging
+  logger.info(
+    `Full environment details: ${JSON.stringify(environmentDetails, null, 2)}`
+  );
+
+  // Extract environment name and blueprint name from metadata
   let environmentName = environmentId; // Fallback to ID
+  let blueprintName: string | undefined;
+
   try {
     const envData = environmentDetails as {
       details?: {
         definition?: {
           metadata?: {
             name?: string;
+            blueprint_name?: string;
           };
         };
       };
     };
+
+    logger.info(
+      `Environment metadata: ${JSON.stringify(envData.details?.definition?.metadata, null, 2)}`
+    );
+
     environmentName =
       envData.details?.definition?.metadata?.name ?? environmentId;
-  } catch {
+    blueprintName = envData.details?.definition?.metadata?.blueprint_name;
+
+    logger.info(`Extracted environment name: ${environmentName}`);
+    logger.info(`Extracted blueprint name: ${blueprintName ?? "undefined"}`);
+
+    if (blueprintName) {
+      logger.info(`Blueprint name found: ${blueprintName}`);
+    } else {
+      logger.warn(
+        `No blueprint_name found in metadata, will use environment name as fallback`
+      );
+    }
+  } catch (error) {
     // Use fallback if extraction fails
-    logger.warn("Could not extract environment name from metadata");
+    logger.warn(
+      `Could not extract environment name from metadata: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
   }
 
   // Create temporary file with environment name
@@ -362,6 +452,12 @@ const attachEnvironmentFileToChatContextInternal = async (
   );
 
   progress?.report({ increment: 5 });
+
+  // Step 6: Search for and open file with blueprint name (or environment name as fallback)
+  progress?.report({ message: "Looking for related files...", increment: 0 });
+  const searchName = blueprintName ?? environmentName;
+  logger.info(`Searching for file with name: ${searchName}`);
+  await searchAndOpenEnvironmentFile(searchName);
 
   vscode.window.showInformationMessage(
     "Environment details have been added to the chat context"

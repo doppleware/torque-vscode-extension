@@ -478,4 +478,165 @@ suite("Environment Context URL Handler Integration Tests", () => {
       }
     });
   });
+
+  suite("File Search and Open", () => {
+    test("SHOULD search for file with blueprint name in workspace", async () => {
+      const blueprintName = "hello-blueprint";
+
+      // Create a test file in the workspace
+      const workspaceFolders = vscode.workspace.workspaceFolders;
+      if (!workspaceFolders || workspaceFolders.length === 0) {
+        // Skip test if no workspace folder
+        return;
+      }
+
+      const testFilePath = vscode.Uri.joinPath(
+        workspaceFolders[0].uri,
+        `${blueprintName}.yaml`
+      );
+
+      // Create test file
+      await vscode.workspace.fs.writeFile(
+        testFilePath,
+        Buffer.from("spec_version: 2\nblueprint: hello-blueprint")
+      );
+
+      try {
+        // Search for files matching the blueprint name
+        const files = await vscode.workspace.findFiles(
+          `**/*${blueprintName}*`,
+          "**/node_modules/**",
+          10
+        );
+
+        // Verify file was found
+        assert.ok(files.length > 0, "Should find at least one matching file");
+        assert.ok(
+          files.some((file) => file.fsPath.includes(blueprintName)),
+          "Found files should contain blueprint name"
+        );
+      } finally {
+        // Clean up test file
+        try {
+          await vscode.workspace.fs.delete(testFilePath);
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
+    });
+
+    test("SHOULD open file when found", async () => {
+      const environmentName = "my-test-env";
+
+      const workspaceFolders = vscode.workspace.workspaceFolders;
+      if (!workspaceFolders || workspaceFolders.length === 0) {
+        return;
+      }
+
+      const testFilePath = vscode.Uri.joinPath(
+        workspaceFolders[0].uri,
+        `${environmentName}.md`
+      );
+
+      // Create test file
+      await vscode.workspace.fs.writeFile(
+        testFilePath,
+        Buffer.from("# Environment Documentation\n\nTest content")
+      );
+
+      try {
+        // Search and open the file
+        const files = await vscode.workspace.findFiles(
+          `**/*${environmentName}*`,
+          "**/node_modules/**",
+          10
+        );
+
+        assert.ok(files.length > 0, "Should find the test file");
+
+        // Open the first matching file
+        const document = await vscode.workspace.openTextDocument(files[0]);
+        const editor = await vscode.window.showTextDocument(document, {
+          preview: false,
+          viewColumn: vscode.ViewColumn.One
+        });
+
+        // Verify file was opened
+        assert.ok(editor, "Should open editor");
+        assert.ok(
+          editor.document.uri.fsPath.includes(environmentName),
+          "Opened document should match environment name"
+        );
+
+        // Close the editor
+        await vscode.commands.executeCommand(
+          "workbench.action.closeActiveEditor"
+        );
+      } finally {
+        // Clean up test file
+        try {
+          await vscode.workspace.fs.delete(testFilePath);
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
+    });
+
+    test("SHOULD handle sanitized environment names", async () => {
+      // Test that files with special characters replaced match sanitized search
+      const sanitizedName = "test_env_123";
+
+      const workspaceFolders = vscode.workspace.workspaceFolders;
+      if (!workspaceFolders || workspaceFolders.length === 0) {
+        return;
+      }
+
+      const testFilePath = vscode.Uri.joinPath(
+        workspaceFolders[0].uri,
+        `${sanitizedName}.yaml`
+      );
+
+      // Create test file with sanitized name
+      await vscode.workspace.fs.writeFile(
+        testFilePath,
+        Buffer.from("test: content")
+      );
+
+      try {
+        // Search using sanitized pattern
+        const files = await vscode.workspace.findFiles(
+          `**/*${sanitizedName}*`,
+          "**/node_modules/**",
+          10
+        );
+
+        assert.ok(files.length > 0, "Should find file with sanitized name");
+        assert.ok(
+          files[0].fsPath.includes(sanitizedName),
+          "Found file should have sanitized name"
+        );
+      } finally {
+        // Clean up test file
+        try {
+          await vscode.workspace.fs.delete(testFilePath);
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
+    });
+
+    test("SHOULD not throw when no matching file is found", async () => {
+      const nonexistentEnvName = "definitely-does-not-exist-12345";
+
+      // Search for non-existent file - should not throw
+      const files = await vscode.workspace.findFiles(
+        `**/*${nonexistentEnvName}*`,
+        "**/node_modules/**",
+        10
+      );
+
+      // Should return empty array, not throw
+      assert.strictEqual(files.length, 0, "Should find no files");
+    });
+  });
 });

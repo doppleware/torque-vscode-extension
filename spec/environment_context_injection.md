@@ -69,12 +69,26 @@ Environment data includes:
 
 ### Context Attachment
 
-**AI Chat Integration**
+#### AI Chat Integration
 
 - Environment data is packaged as a structured file attachment for AI analysis
 - Data format is optimized for natural language processing and analysis
 - AI can easily reference environment details in responses and recommendations
 - Multiple environment contexts can be added to the same chat session
+
+#### Automatic File Discovery
+
+- After loading environment context, the extension automatically searches for related files in the workspace
+- Files matching the **blueprint name** (not environment name) are identified and opened automatically
+- Searches specifically for YAML files (`.yaml` or `.yml` extensions) based on the `blueprint_name` metadata field
+- Search patterns used (in order):
+  - `**/{blueprint_name}.yaml` - Exact match with .yaml extension
+  - `**/{blueprint_name}.yml` - Exact match with .yml extension
+  - `**/*{blueprint_name}*.yaml` - Partial match with .yaml extension
+  - `**/*{blueprint_name}*.yml` - Partial match with .yml extension
+- Falls back to environment name if blueprint name is not available
+- Opens the first matching file in the editor for immediate access
+- File discovery is non-blocking and fails gracefully if no matching files exist
 
 ### Error Handling
 
@@ -93,14 +107,16 @@ Environment data includes:
 2. User clicks "Analyze in VS Code" or similar action
 3. VS Code opens (or focuses if already open)
 4. Environment context is automatically added to AI chat
-5. User can immediately ask AI questions about the environment
+5. Related workspace files (if any) matching the environment name are automatically opened
+6. User can immediately ask AI questions about the environment with all relevant context available
 
 ### From Documentation or Email
 
 1. User receives an email or documentation containing an environment context URL
 2. User clicks the URL link
 3. VS Code launches and opens AI chat with environment context loaded
-4. User can analyze the environment or ask questions without additional setup
+4. Any workspace files matching the environment name are opened automatically
+5. User can analyze the environment or ask questions without additional setup
 
 ### From Manual URL Construction
 

@@ -339,7 +339,8 @@ export class MockTorqueServer {
         definition: {
           metadata: {
             name: `Environment ${environmentId}`,
-            space_name: spaceName
+            space_name: spaceName,
+            blueprint_name: "hello-blueprint"
           },
           inputs: [
             {
