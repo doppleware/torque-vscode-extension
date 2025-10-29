@@ -2,6 +2,10 @@
  * Setup Command
  *
  * Handles the initial configuration of Torque AI extension with URL, token, and default space.
+ * Includes API health checks, MCP server registration, and credential validation.
+ *
+ * @see {@link file://../../spec/extension_configuration.md} Extension Configuration Specification
+ * @see {@link file://../../spec/mcp_auto_installation.md} MCP Auto Installation Specification
  */
 
 import * as vscode from "vscode";

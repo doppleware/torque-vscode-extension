@@ -1,7 +1,11 @@
 /**
  * Deployment Form
  *
- * Manages the interactive form for collecting deployment inputs
+ * Manages the interactive form for collecting deployment inputs.
+ * Provides multi-step interface with field validation, auto-selection,
+ * and integration with deployment values caching.
+ *
+ * @see {@link file://../../spec/environment_deployment.md} Environment Deployment Specification
  */
 
 import * as vscode from "vscode";

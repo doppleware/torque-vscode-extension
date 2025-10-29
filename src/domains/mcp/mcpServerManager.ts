@@ -1,3 +1,18 @@
+/**
+ * MCP Server Manager
+ *
+ * Manages registration and lifecycle of the Torque MCP (Model Context Protocol) server.
+ * Handles secure HTTP server definition with authentication headers and provider registration.
+ *
+ * Features:
+ * - Creates MCP server definition with Torque API endpoint
+ * - Configures authentication headers for secure communication
+ * - Registers MCP server definition provider with VS Code
+ * - Handles server health checks and registration cleanup
+ *
+ * @see {@link file://../../spec/mcp_auto_installation.md} MCP Auto Installation Specification
+ */
+
 import vscode from "vscode";
 
 const MCP_SERVER_LABEL = "torque";

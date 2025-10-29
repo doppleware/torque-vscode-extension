@@ -3,224 +3,180 @@
 [![Release](https://img.shields.io/github/v/release/doppleware/torque-vscode-extension)](https://github.com/doppleware/torque-vscode-extension/releases)
 [![Tests](https://github.com/doppleware/torque-vscode-extension/actions/workflows/ci.yml/badge.svg)](https://github.com/doppleware/torque-vscode-extension/actions/workflows/ci.yml)
 
+The Torque platform provides self-service automation and governance of IaC assets for a variety of use cases. The Torque VS Code extension helps in the authoring of Torque blueprints and grains, operation and troubleshooting of environments.
+
 For more info check out our [website](https://quali.com)
 
-## Architecture
+## Main Features
 
-The Torque AI VS Code extension provides a comprehensive integration between VS Code and the Torque AI platform.
+### 1. Environment Details Injection into Chat
 
-```mermaid
-graph TB
-    subgraph "VS Code Extension"
-        EXT[Extension Host]
-        URI[URI Router]
-        API[API Client]
-        SET[Settings Manager]
-        EXP[Express Server :33100-33199]
-    end
+Get AI-powered insights by injecting live environment context directly into your IDE's chat interface.
 
-    subgraph "VS Code Integration"
-        CMD[Commands]
-        WEB[Webview Panel]
-        CTX[Extension Context]
-        CFG[Configuration]
-    end
+#### a. From URL Handler
 
-    subgraph "External Services"
-        TORQUE[Torque AI Platform API Server]
-        MCP[MCP Servers Claude/Cursor/Windsurf]
-        CHAT[IDE Chat Systems]
-    end
+Deep link from external applications to automatically attach environment details to chat context. Simply open a URL like `vscode://quali.torque-ai/chat/context/add/environment/{SPACE_NAME}/{ENVIRONMENT_ID}` to fetch environment introspection data and inject it into the chat.
 
-    subgraph "URL Handlers"
-        URI1["vscode://quali.torque-ai/chat/context/add/environment/{SPACE_NAME}/{ENVIRONMENT_ID}"]
-        URI2["vscode://quali.torque-ai/webview/open?url=..."]
-    end
+**Learn more:** [URI Handling Specification](spec/uri_handling.md) | [Environment Context Injection](spec/environment_context_injection.md)
 
-    %% Main flow
-    EXT --> URI
-    EXT --> API
-    EXT --> SET
-    EXT --> EXP
+#### b. From Running Environment List
 
-    %% URI handling
-    URI1 --> URI
-    URI2 --> URI
-    URI --> |"/add/environment/{SPACE_NAME}/{ENVIRONMENT_ID}"| API
-    URI --> |"/webview/open"| WEB
+View all running environments for a blueprint via CodeLens and QuickPick menu. Click "Add to chat" to instantly inject environment details into your conversation.
 
-    %% API communication
-    API --> |HTTPS + X-API-Token| TORQUE
-    API --> |Authentication| TORQUE
-    API --> |Incident Data| TORQUE
+**Learn more:** [Blueprint Running Environments Specification](spec/blueprint_running_environments.md)
 
-    %% Settings management
-    SET --> CFG
-    SET --> MCP
-    CFG --> |torque.url, torque.token, torque.login, torque.password| SET
+### 2. Blueprint Actions
 
-    %% Express server endpoints
-    EXP --> |"/api/torque/about"| API
-    EXP --> |"/add/environment/{SPACE_NAME}/{ENVIRONMENT_ID}"| API
+Powerful actions for authoring and managing Torque blueprints, accessible via CodeLens or command palette.
 
-    %% VS Code integration
-    WEB --> CMD
-    API --> CHAT
+#### a. Sync Blueprint
 
-    %% External integrations
-    SET --> |MCP Config JSON Files| MCP
+Synchronize local blueprint files with the Torque platform catalog. Keep your blueprints up-to-date across development and production.
 
-    style EXT fill:#e1f5fe
-    style URI fill:#f3e5f5
-    style API fill:#e8f5e8
-    style TORQUE fill:#fff3e0
-    style MCP fill:#fce4ec
-```
+**Learn more:** [Blueprint YAML Support Specification](spec/blueprint_yaml_support.md)
 
-### Core Components
+#### b. Validate Blueprint
 
-#### 1. Extension Host (`src/extension.ts`)
+Validate blueprint syntax and structure against Torque platform rules. Errors and warnings appear in VS Code's Problems panel with precise line/column locations.
 
-- **Activation**: Triggered on VS Code startup (`onStartupFinished`)
-- **Express Server**: Runs on dynamic port (33100-33199) for external API communication
-- **URI Handler**: Registers `vscode://quali.torque-ai/` scheme for deep linking
-- **Configuration Monitoring**: Watches for setting changes and reinitializes services
+**Learn more:** [Environment Validation Specification](spec/environment_validation.md)
 
-#### 2. URI Router (`src/uris/UriRouter.ts`)
+#### c. Deploy Blueprint
 
-- **Pattern Matching**: Uses `path-to-regexp` for flexible route definitions
-- **Parameter Extraction**: Supports path parameters (`:id`) and query strings
-- **Error Handling**: Graceful error handling with user notifications
+Launch environments directly from VS Code with an interactive deployment form. The form intelligently fetches allowed values for inputs, caches previous selections, and provides real-time validation.
 
-**Supported Routes:**
+**Learn more:** [Environment Deployment Specification](spec/environment_deployment.md)
 
-- `/chat/context/add/file/incident/:incidentId` - Attach incident data to chat context
-- `/webview/open?url=<url>` - Open secure webview with domain validation
+### 3. Autocomplete
 
-#### 3. API Client (`src/api/ApiClient.ts`)
+Intelligent autocomplete for faster blueprint authoring.
 
-- **Authentication**: Token-based auth with automatic refresh using refresh tokens
-- **Service Architecture**: Modular services (Authentication, Agentic)
-- **Request Interceptors**: Automatic token refresh and error handling
-- **HTTPS Support**: Self-signed certificate support for development
+#### a. Grains Autocomplete
 
-#### 4. Settings Manager (`src/SettingsManager.ts`)
+Context-aware autocomplete for grain references in blueprint YAML files. Auto-suggests available grains based on your Torque space configuration.
 
-- **Multi-Scope Support**: Global, workspace, and workspace folder configurations
-- **Secret Storage**: Secure storage for sensitive credentials
-- **Change Detection**: Tracks configuration scope changes
-- **MCP Integration**: Automatic MCP server configuration when enabled
+**Learn more:** [Blueprint Autocomplete Specification](spec/blueprint_autocomplete.md)
 
-#### 5. Express Server Integration
+#### b. Blueprints Autocomplete (TBD)
 
-- **Health Endpoint**: `/api/torque/about` - Extension and workspace information
-- **Chat Context API**: `/add/environment/{SPACE_NAME}/{ENVIRONMENT_ID}` - External environment attachment
-- **CORS Support**: Cross-origin requests for web integration
+Coming soon: Autocomplete support for blueprint references.
 
-### Data Flow
+### 4. Create New Blueprint Action
 
-1. **External Trigger**: Web application or CLI calls `vscode://quali.torque-ai/` URL
-2. **URI Processing**: UriRouter matches pattern and extracts parameters
-3. **API Communication**: ApiClient authenticates and fetches data from Torque platform
-4. **File Generation**: Environment data written to temporary JSON file
-5. **IDE Integration**: VS Code commands open chat and attach file context
-6. **User Notification**: Success/error feedback via VS Code notifications
+Quickly scaffold new blueprints with a pre-configured template. Use the File > New File menu or command palette to create `blueprint.yaml` files with proper schema and structure.
 
-### Security Features
+**Learn more:** [Blueprint YAML Support Specification](spec/blueprint_yaml_support.md)
 
-- **Domain Validation**: Webview URLs must match configured API domain
-- **Token Management**: Secure token storage and automatic refresh
-- **HTTPS Enforcement**: All API communication over HTTPS
-- **Scope Isolation**: Settings can be configured at different VS Code scopes
+## Getting Started
 
-## URL Handler Integration
+### Installation
 
-The extension registers the `vscode://quali.torque-ai/` URI scheme to enable deep linking from external applications, web interfaces, and command-line tools.
+1. Install the extension from the VS Code marketplace
+2. Run the command "Configure Torque AI" from the command palette
+3. Enter your Torque platform URL and API token
+4. Select your active space
 
-### Usage Examples
+**Learn more:** [Extension Configuration Specification](spec/extension_configuration.md) | [Torque Space Selection](spec/torque_space_selection.md)
 
-#### 1. Attach Environment Details to Chat Context
+### MCP Integration
 
-```bash
-# From command line
-open "vscode://quali.torque-ai/chat/context/add/file/incident/abc123"
+The extension automatically registers as an MCP (Model Context Protocol) server for AI chat systems like Claude, Cursor, and Windsurf. This enables AI assistants to access Torque environment data and help with troubleshooting.
 
-# From web application
-window.location.href = "vscode://quali.torque-ai/chat/context/add/file/incident/abc123"
-```
+**Learn more:** [MCP Auto Installation Specification](spec/mcp_auto_installation.md)
 
-This will:
+## Configuration
 
-1. Fetch environment data from the Torque API using the provided incident ID
-2. Generate a temporary JSON file with the environment details
-3. Automatically open VS Code's chat interface
-4. Attach the environment file to the chat context for AI analysis
+| Setting              | Type   | Default                  | Description                   |
+| -------------------- | ------ | ------------------------ | ----------------------------- |
+| `torque.url`         | string | `https://localhost:5051` | Torque platform API URL       |
+| `torque.token`       | string | -                        | API authentication token      |
+| `torque.activeSpace` | string | -                        | Currently active Torque space |
 
-#### 2. Open Secure Webview
+Settings can be configured at global, workspace, or workspace folder scope.
 
-```bash
-# Open webview with domain validation
-open "vscode://quali.torque-ai/webview/open?url=https://app.torque.example.com/dashboard"
-```
+## Architecture Overview
 
-This will:
+The extension integrates with VS Code through multiple touchpoints:
 
-1. Validate that the URL matches the configured API domain
-2. Create a new webview panel in VS Code
-3. Load the specified URL in a secure iframe
-4. Display appropriate error messages for invalid URLs
+- **CodeLens Providers**: Display inline actions above blueprint files
+- **Completion Providers**: Intelligent autocomplete for YAML authoring
+- **Diagnostic Provider**: Validation errors in Problems panel
+- **URI Handler**: Deep linking from external applications
+- **Language Model Tools**: MCP server integration for AI chat
+- **Commands**: Command palette and context menu actions
 
-### Integration Patterns
+### Key Components
 
-#### Web Application Integration
+- **Extension Host** - Main activation and lifecycle management
+- **URI Router** - Pattern-based routing for deep links (`vscode://quali.torque-ai/`)
+- **API Client** - Authenticated HTTP client with token management
+- **Settings Manager** - Multi-scope configuration with secret storage
+- **Express Server** - Local HTTP server (ports 33100-33199) for external integrations
 
-```javascript
-// Check if VS Code is available
-function openInVSCode(incidentId) {
-  const url = `vscode://quali.torque-ai/chat/context/add/environment/{SPACE_NAME}/{ENVIRONMENT_ID}`;
+### Data Flow Example: Environment Context Injection
 
-  // Attempt to open in VS Code
-  window.location.href = url;
+1. User clicks deep link: `vscode://quali.torque-ai/chat/context/add/environment/my-space/env-123`
+2. URI Router matches pattern and extracts space name and environment ID
+3. API Client fetches environment details and introspection data from Torque platform
+4. Temporary JSON file created with environment context and workflows
+5. VS Code chat command opens with file attached
+6. AI assistant analyzes environment data to help troubleshoot issues
 
-  // Fallback: show instructions
-  setTimeout(() => {
-    showVSCodeInstructions(url);
-  }, 1000);
-}
-```
+**Learn more:** [URI Handling Specification](spec/uri_handling.md) | [Environment Context Injection](spec/environment_context_injection.md)
 
-### Error Handling
+## Development
 
-The URL handler provides comprehensive error handling:
-
-- **Authentication Errors**: Displays login prompts if API credentials are missing
-- **Network Errors**: Shows connection error messages with retry options
-- **Invalid URLs**: Validates webview URLs against configured domains
-- **Missing Incidents**: Handles API 404 responses gracefully
-- **File System Errors**: Manages temporary file creation failures
-
-### Security Considerations
-
-- **Domain Whitelist**: Webview URLs must match the configured `torque.url` domain
-- **Token Validation**: All API requests include authentication tokens
-- **Temporary Files**: Incident data files are created in secure temp directories
-- **Input Sanitization**: All URL parameters are properly decoded and validated
-
-## Extension settings
-
-This extension contributes the following settings:
-
-| Key            | Type   | Default                  | Description |
-| -------------- | ------ | ------------------------ | ----------- |
-| `torque.url`   | string | `https://localhost:5051` | API URL     |
-| `torque.token` | string | -                        | API token   |
-
-## Build
+### Build Commands
 
 ```shell
+# Install dependencies
 npm ci
-vsce package
+
+# Development build with watch mode
+npm run watch
+
+# Type checking
+npm run check-types
+
+# Run tests
+npm test
+
+# Lint code
+npm run lint
+
+# Create extension package
+npm run package
 ```
+
+### Project Structure
+
+- `src/` - TypeScript source code
+  - `api/` - API client and service layer
+  - `commands/` - VS Code command implementations
+  - `domains/` - Feature domains (blueprints, environments, etc.)
+  - `providers/` - VS Code providers (CodeLens, Completion, etc.)
+  - `uris/` - URI routing and handlers
+- `spec/` - Feature specifications and documentation
+- `test/` - Integration and unit tests
+- `test-workspace/` - Test workspace for development
+
+**Learn more:** See [CLAUDE.md](CLAUDE.md) for detailed development guidelines
+
+## Documentation
+
+Complete feature specifications are available in the [spec/](spec/) directory:
+
+- [Blueprint YAML Support](spec/blueprint_yaml_support.md)
+- [Blueprint Autocomplete](spec/blueprint_autocomplete.md)
+- [Environment Context Injection](spec/environment_context_injection.md)
+- [Environment Deployment](spec/environment_deployment.md)
+- [Environment Validation](spec/environment_validation.md)
+- [Blueprint Running Environments](spec/blueprint_running_environments.md)
+- [URI Handling](spec/uri_handling.md)
+- [Extension Configuration](spec/extension_configuration.md)
+- [Torque Space Selection](spec/torque_space_selection.md)
+- [MCP Auto Installation](spec/mcp_auto_installation.md)
+- [Spec to Code Mapping](spec/SPEC_TO_CODE_MAPPING.md)
 
 ## License
 

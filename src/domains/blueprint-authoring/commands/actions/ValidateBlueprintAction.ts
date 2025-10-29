@@ -1,5 +1,11 @@
 /**
  * Validate Blueprint Action
+ *
+ * Validates blueprint YAML files against the Torque platform's validation rules.
+ * Displays errors and warnings in VS Code's Problems panel.
+ *
+ * @see {@link file://../../spec/environment_validation.md} Environment Validation Specification
+ * @see {@link file://../../spec/blueprint_yaml_support.md} Blueprint YAML Support Specification
  */
 
 import * as vscode from "vscode";

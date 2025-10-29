@@ -1,7 +1,17 @@
 /**
  * Grain Completion Provider
  *
- * Provides autocomplete suggestions for grain names in blueprint YAML files
+ * Provides autocomplete suggestions for grain names in blueprint YAML files.
+ * Fetches IAC assets from the Torque catalog API and caches results for performance.
+ *
+ * Features:
+ * - Fetches grain names from Torque catalog
+ * - Provides completion items with grain metadata (type, repository)
+ * - Caches results per space with 5-minute TTL
+ * - Clears cache when space configuration changes
+ * - Filters suggestions based on user input
+ *
+ * @see {@link file://../../spec/blueprint_autocomplete.md} Blueprint Autocomplete Specification
  */
 
 import * as vscode from "vscode";

@@ -3,6 +3,10 @@
  *
  * Allows users to set the active Torque space for the current workspace.
  * If no active space is set, the default space will be used.
+ * Fetches available spaces from API and shows QuickPick for selection.
+ *
+ * @see {@link file://../../spec/torque_space_selection.md} Torque Space Selection Specification
+ * @see {@link file://../../spec/extension_configuration.md} Extension Configuration Specification
  */
 
 import * as vscode from "vscode";

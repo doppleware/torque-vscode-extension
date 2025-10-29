@@ -4,8 +4,13 @@
  * Provides CodeLens above the spec_version line in blueprint YAML files showing:
  * - Active Torque space
  * - Environment status (active/inactive)
- * - Blueprint actions (Validate, Deploy)
+ * - Blueprint actions (Validate, Deploy, Sync)
+ *
  * A blueprint is identified by the presence of the Quali Torque schema reference.
+ *
+ * @see {@link file://../../spec/blueprint_yaml_support.md} Blueprint YAML Support Specification
+ * @see {@link file://../../spec/environment_validation.md} Environment Validation Specification
+ * @see {@link file://../../spec/environment_deployment.md} Environment Deployment Specification
  */
 
 import * as vscode from "vscode";

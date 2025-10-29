@@ -1,5 +1,12 @@
 /**
  * Deploy Blueprint Action
+ *
+ * Handles deploying blueprint environments to the Torque platform.
+ * Parses blueprint inputs, fetches allowed values, shows interactive deployment form,
+ * and deploys environments with user-provided values.
+ *
+ * @see {@link file://../../spec/environment_deployment.md} Environment Deployment Specification
+ * @see {@link file://../../spec/blueprint_yaml_support.md} Blueprint YAML Support Specification
  */
 
 import * as vscode from "vscode";

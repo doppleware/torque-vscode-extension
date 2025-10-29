@@ -2,6 +2,9 @@
  * Create Blueprint Command
  *
  * Handles creation of new Torque Blueprint YAML files with proper template injection.
+ * Includes filename validation, template injection, and editor integration.
+ *
+ * @see {@link file://../../spec/blueprint_yaml_support.md} Blueprint YAML Support Specification
  */
 
 import * as vscode from "vscode";

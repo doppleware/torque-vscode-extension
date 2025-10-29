@@ -1,3 +1,19 @@
+/**
+ * URI Router
+ *
+ * Handles custom vscode:// URI scheme routing for the extension.
+ * Provides Express-like route registration with parameter extraction and query parsing.
+ *
+ * Features:
+ * - Pattern-based route matching (e.g., /chat/context/add/environment/:space_name/:environment_id)
+ * - Parameter extraction from URI paths
+ * - Query string parsing
+ * - Type-safe route handlers
+ *
+ * @see {@link file://../../spec/uri_handling.md} URI Handling and Deep Linking Specification
+ * @see {@link file://../../spec/environment_context_injection.md} Environment Context Injection Specification
+ */
+
 import { type Key, pathToRegexp } from "path-to-regexp";
 import vscode from "vscode";
 

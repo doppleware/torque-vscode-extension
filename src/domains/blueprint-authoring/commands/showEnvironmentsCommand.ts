@@ -2,7 +2,12 @@
  * Show Blueprint Environments Command
  *
  * Displays a list of active environments for a blueprint in a QuickPick menu
- * with "Add to chat" buttons for each environment
+ * with "Add to chat" buttons for each environment. Integrates with environment
+ * context injection to add environment details to AI chat.
+ *
+ * @see {@link file://../../spec/blueprint_running_environments.md} Blueprint Running Environments Specification
+ * @see {@link file://../../spec/environment_context_injection.md} Environment Context Injection Specification
+ * @see {@link file://../../spec/blueprint_yaml_support.md} Blueprint YAML Support Specification
  */
 
 import * as vscode from "vscode";

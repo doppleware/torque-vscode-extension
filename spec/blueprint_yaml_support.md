@@ -158,6 +158,150 @@ The complete specification schema is maintained in the external JSON schema file
 - Dependency relationships
 - Terraform/Helm/script configurations
 
+## Blueprint File Identification
+
+The extension identifies Torque blueprint files to determine when to show CodeLens actions and provide blueprint-specific functionality.
+
+### Identification Criteria
+
+A file is identified as a Torque blueprint if **all** of the following conditions are met:
+
+1. **File Type**: The document must be a YAML file (`languageId === "yaml"`)
+2. **Schema Directive**: The **first line** of the file must contain the Torque blueprint schema reference
+3. **Schema URL**: The schema URL must match the official Torque blueprint spec2 schema
+
+### Schema Directive Format
+
+The schema directive must appear on the **first line** of the file in the following format:
+
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/QualiTorque/torque-vs-code-extensions/master/client/schemas/blueprint-spec2-schema.json
+```
+
+**Pattern Recognition**:
+
+- Starts with `#` (YAML comment)
+- Contains `yaml-language-server:` directive
+- Includes `$schema=` parameter
+- Matches the exact schema URL (case-insensitive)
+
+**Implementation**: [BlueprintCodeLensProvider.ts:180-196](../src/domains/blueprint-authoring/codeLens/BlueprintCodeLensProvider.ts#L180-L196)
+
+### CodeLens Display Conditions
+
+Once a file is identified as a blueprint, the extension displays three CodeLens items above the `spec_version` line:
+
+#### 1. Active Space CodeLens
+
+**Display**: Always shown for blueprint files
+
+**Content**:
+
+- Format: `Active Space: {space_name}`
+- Format (default): `Active Space: {space_name} (Default)`
+- Format (not configured): `Active Space: Not Set`
+
+**Behavior**:
+
+- Click opens space selection dialog
+- Shows workspace-specific active space if configured
+- Falls back to default space from settings
+- Displays "(Default)" indicator when using fallback
+
+**Command**: `torque.setActiveSpace`
+
+#### 2. Environment Status CodeLens
+
+**Display**: Always shown for blueprint files
+
+**Content Variations**:
+
+| Status           | Title         | Condition                               | Clickable |
+| ---------------- | ------------- | --------------------------------------- | --------- |
+| Not Configured   | `Inactive`    | No API client configured                | No        |
+| No Environments  | `Inactive`    | API call successful, 0 environments     | No        |
+| Has Environments | `Running (n)` | API call successful, n > 0 environments | Yes       |
+| API Error        | `Inactive`    | API call failed                         | No        |
+
+**Behavior**:
+
+- Fetches active environments for the blueprint from Torque API
+- Blueprint name extracted from filename (without `.yaml`/`.yml` extension)
+- Click (when environments exist) shows QuickPick menu with environment list
+- Error handling: shows "Inactive" on failure, doesn't break other CodeLens
+
+**Command**: `torque.showBlueprintEnvironments` (when clickable)
+
+**API Call**: `GET /api/spaces/{spaceName}/environments?blueprint_name={blueprintName}&status=active`
+
+#### 3. Actions CodeLens
+
+**Display**: Always shown for blueprint files
+
+**Content**:
+
+- Title: `Actions...`
+- Tooltip: "Blueprint actions (Validate, Deploy)"
+
+**Behavior**:
+
+- Click opens QuickPick menu with available blueprint actions:
+  - Validate - Validate blueprint against Torque platform rules
+  - Deploy - Launch new environment with deployment form
+  - Sync - Synchronize blueprint to Torque platform catalog
+
+**Command**: `torque.blueprintActions`
+
+### CodeLens Positioning
+
+CodeLens items are positioned **above** the `spec_version` line:
+
+**Logic**:
+
+1. Search document for line matching pattern: `/^\s*spec_version:\s*/`
+2. If found, place CodeLens at that line number
+3. If not found, place CodeLens at line 0 (top of file)
+
+**Implementation**: [BlueprintCodeLensProvider.ts:162-174](../src/domains/blueprint-authoring/codeLens/BlueprintCodeLensProvider.ts#L162-L174)
+
+### Non-Blueprint YAML Files
+
+YAML files that do **not** contain the Torque blueprint schema directive on the first line will:
+
+- Not show any CodeLens
+- Not receive blueprint-specific autocomplete
+- Not be validated against blueprint rules
+- Not appear in blueprint-related commands
+
+**Examples of Non-Blueprint Files**:
+
+- Generic YAML configuration files
+- Docker Compose files
+- Kubernetes manifests
+- Ansible playbooks
+- Other schema-based YAML files
+
+### Schema URL Reference
+
+The official Torque blueprint schema URL is defined as a constant:
+
+```typescript
+export const BLUEPRINT_SCHEMA_URL =
+  "https://raw.githubusercontent.com/QualiTorque/torque-vs-code-extensions/master/client/schemas/blueprint-spec2-schema.json";
+```
+
+**Implementation**: [blueprintTemplate.ts:8-9](../src/domains/blueprint-authoring/templates/blueprintTemplate.ts#L8-L9)
+
+### CodeLens Refresh
+
+CodeLens refreshes automatically when:
+
+- Settings change (URL, token, active space)
+- Document content changes
+- Extension activation state changes
+
+**Implementation**: [BlueprintCodeLensProvider.ts:36-38](../src/domains/blueprint-authoring/codeLens/BlueprintCodeLensProvider.ts#L36-L38)
+
 ## Test Coverage
 
 The blueprint functionality is thoroughly tested in [createBlueprint.test.ts](../src/test/suite/createBlueprint.test.ts).

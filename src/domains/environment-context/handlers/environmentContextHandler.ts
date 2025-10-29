@@ -1,3 +1,21 @@
+/**
+ * Environment Context Handler
+ *
+ * Handles fetching environment details, transforming data, attaching to AI chat,
+ * and automatically opening related blueprint files in the workspace.
+ *
+ * Features:
+ * - Fetches environment details with grains and resources
+ * - Fetches introspection data for each grain
+ * - Fetches workflows for resources
+ * - Transforms data into simplified schema
+ * - Creates temporary YAML file with environment context
+ * - Attaches file to AI chat for analysis
+ * - Searches for and opens blueprint files matching the environment
+ *
+ * @see {@link file://../../spec/environment_context_injection.md} Environment Context Injection Specification
+ */
+
 import fs from "fs";
 import os from "os";
 import path from "path";

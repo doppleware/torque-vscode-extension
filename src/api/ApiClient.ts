@@ -1,3 +1,19 @@
+/**
+ * API Client
+ *
+ * HTTP client for communicating with the Torque platform API.
+ * Manages authentication, token refresh, and service-based architecture.
+ *
+ * Features:
+ * - Automatic token refresh on 401 responses
+ * - Request/response interceptors for auth handling
+ * - Self-signed certificate support
+ * - Service-based API organization (Authentication, Spaces, Environments, Agentic)
+ * - Session management with access/refresh tokens
+ *
+ * @see {@link file://../../spec/extension_configuration.md} Extension Configuration Specification
+ */
+
 import axios, {
   type AxiosError,
   type AxiosInstance,

@@ -1,3 +1,20 @@
+/**
+ * Settings Manager
+ *
+ * Manages extension settings with support for secret storage, scope detection,
+ * and configuration change tracking.
+ *
+ * Features:
+ * - Unified interface for reading/writing settings
+ * - Secret storage integration for sensitive data (URL, token)
+ * - Scope detection (global vs workspace vs workspace folder)
+ * - Configuration change tracking with previous value comparison
+ * - Automatic migration between storage locations
+ *
+ * @see {@link file://../../spec/extension_configuration.md} Extension Configuration Specification
+ * @see {@link file://../../spec/torque_space_selection.md} Torque Space Selection Specification
+ */
+
 import vscode from "vscode";
 import type { PackageJSON } from "../../types";
 
