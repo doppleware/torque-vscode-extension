@@ -105,7 +105,506 @@ POST /api/spaces/{spaceName}/catalog/inputs_allowed_values
 - Service: [SpacesService.ts:284-323](../src/api/services/SpacesService.ts#L284-L323)
 - Usage: [DeployBlueprintAction.ts:144-167](../src/domains/blueprint-authoring/commands/actions/DeployBlueprintAction.ts#L144-L167)
 
-### 4. Interactive Deployment Form
+### 4. Catalog API Process - Detailed Flow
+
+The catalog API (`/api/spaces/{spaceName}/catalog/inputs_allowed_values`) is central to providing an intelligent deployment form. This section describes the complete process of fetching and applying allowed values.
+
+#### 4.1 Purpose of Allowed Values
+
+The allowed values API provides:
+
+1. **Dynamic Options**: Lists of valid values for input fields (e.g., available AWS regions, agent names)
+2. **Validation**: Server-side validation errors for current input combinations
+3. **Metadata**: Additional context about values (agent types, ownership, status)
+4. **Dependencies**: How input values affect available options for other inputs
+
+**Use Cases**:
+
+- Agent selection: Show only agents available in the selected space
+- Region selection: List cloud regions from the provider's catalog
+- Instance types: Show valid instance types for the selected region
+- Blueprint dependencies: Show other blueprints that can be referenced
+
+#### 4.2 Request Construction
+
+**Step 1: Parse Blueprint Inputs**
+
+Extract input definitions from blueprint YAML:
+
+```typescript
+const parsedBlueprint = yaml.load(documentText);
+const inputs = parsedBlueprint?.inputs || [];
+
+// Transform to API format
+const inputDefinitions = inputs.map((input) => ({
+  name: input.name,
+  type: input.type,
+  default: input.default,
+  description: input.description
+  // ... other blueprint properties
+}));
+```
+
+**Step 2: Build Current Input Values**
+
+Start with default values from blueprint:
+
+```typescript
+const inputValues: Record<string, string> = {};
+
+inputs.forEach((input) => {
+  if (input.default !== undefined) {
+    inputValues[input.name] = String(input.default);
+  }
+});
+```
+
+**Step 3: Construct API Request**
+
+```typescript
+const request = {
+  input_values: inputValues, // Current state of inputs
+  input_definitions: inputDefinitions // Blueprint input schema
+};
+
+// POST to /api/spaces/{spaceName}/catalog/inputs_allowed_values
+const response = await apiClient.spaces.getInputAllowedValues(
+  spaceName,
+  request
+);
+```
+
+**Implementation**: [DeployBlueprintAction.ts:144-167](../src/domains/blueprint-authoring/commands/actions/DeployBlueprintAction.ts#L144-L167)
+
+#### 4.3 Response Processing
+
+**Response Structure**:
+
+```typescript
+type AllowedValuesResponse = Array<{
+  name: string; // Input parameter name
+  errors: string[]; // Validation errors for this input
+  allowed_values: Array<{
+    value: string; // Actual value to send in deployment
+    display_value: string | null; // Human-readable label (null = use value)
+    extra_details?: {
+      agent_type?: string; // For agent inputs: "torque" | "kubernetes" etc
+      quali_owned?: boolean; // Quali-managed resource
+      status?: string; // "active" | "inactive" | "error"
+      [key: string]: any; // Additional provider-specific metadata
+    };
+  }>;
+}>;
+```
+
+**Example Response**:
+
+```json
+[
+  {
+    "name": "agent",
+    "errors": [],
+    "allowed_values": [
+      {
+        "value": "aws-agent-prod",
+        "display_value": "AWS Production Agent",
+        "extra_details": {
+          "agent_type": "torque",
+          "quali_owned": false,
+          "status": "active"
+        }
+      },
+      {
+        "value": "aws-agent-dev",
+        "display_value": "AWS Development Agent",
+        "extra_details": {
+          "agent_type": "torque",
+          "quali_owned": false,
+          "status": "active"
+        }
+      }
+    ]
+  },
+  {
+    "name": "region",
+    "errors": [],
+    "allowed_values": [
+      {
+        "value": "us-east-1",
+        "display_value": "US East (N. Virginia)"
+      },
+      {
+        "value": "us-west-2",
+        "display_value": "US West (Oregon)"
+      },
+      {
+        "value": "eu-west-1",
+        "display_value": "EU (Ireland)"
+      }
+    ]
+  },
+  {
+    "name": "instance_type",
+    "errors": ["Instance type must be selected from available options"],
+    "allowed_values": [
+      {
+        "value": "t2.micro",
+        "display_value": null
+      },
+      {
+        "value": "t2.small",
+        "display_value": null
+      },
+      {
+        "value": "t2.medium",
+        "display_value": null
+      }
+    ]
+  }
+]
+```
+
+#### 4.4 Building the Allowed Values Map
+
+The extension transforms the response into a map for efficient lookup:
+
+```typescript
+const allowedValuesMap = new Map<string, AllowedValue[]>();
+
+response.forEach((inputResponse) => {
+  allowedValuesMap.set(inputResponse.name, inputResponse.allowed_values);
+});
+```
+
+**Usage in Form**:
+
+```typescript
+const input = inputs[i];
+const allowedValues = allowedValuesMap.get(input.name);
+
+if (allowedValues && allowedValues.length > 0) {
+  // Show as dropdown/select
+  const label =
+    allowedValues.length === 1
+      ? "Select from 1 option(s)"
+      : `Select from ${allowedValues.length} option(s)`;
+} else {
+  // Show as free-text input
+  const label = `Type: ${input.type}`;
+}
+```
+
+**Implementation**: [DeployBlueprintAction.ts:169-176](../src/domains/blueprint-authoring/commands/actions/DeployBlueprintAction.ts#L169-L176)
+
+#### 4.5 Auto-Selection Logic
+
+When an input has exactly one allowed value, automatically select it:
+
+```typescript
+inputs.forEach((input) => {
+  const allowedValues = allowedValuesMap.get(input.name);
+
+  if (allowedValues && allowedValues.length === 1) {
+    const singleValue = allowedValues[0].value;
+    inputValues[input.name] = singleValue;
+
+    logger.info(
+      `Auto-selected single allowed value for ${input.name}: ${singleValue}`
+    );
+  }
+});
+```
+
+**Rationale**: Improves UX by pre-filling fields that have no choice
+
+**Implementation**: [DeployBlueprintAction.ts:183-190](../src/domains/blueprint-authoring/commands/actions/DeployBlueprintAction.ts#L183-L190)
+
+#### 4.6 Handling Display Values
+
+Display values provide user-friendly labels:
+
+```typescript
+function getDisplayLabel(allowedValue: AllowedValue): string {
+  // Use display_value if available, otherwise fall back to value
+  return allowedValue.display_value || allowedValue.value;
+}
+```
+
+**Example**:
+
+- `value: "us-east-1"` → `display_value: "US East (N. Virginia)"`
+- User sees: "US East (N. Virginia)"
+- API receives: "us-east-1"
+
+**QuickPick Item Construction**:
+
+```typescript
+const items = allowedValues.map((av) => ({
+  label: getDisplayLabel(av),
+  detail: av.extra_details?.status || undefined,
+  description: av.extra_details?.agent_type || undefined,
+  value: av.value
+}));
+```
+
+**Implementation**: [DeploymentForm.ts:212-229](../src/domains/blueprint-authoring/commands/actions/DeploymentForm.ts#L212-L229)
+
+#### 4.7 Error Handling
+
+**API Call Fails**:
+
+```typescript
+try {
+  const response = await apiClient.spaces.getInputAllowedValues(
+    spaceName,
+    request
+  );
+  // Process response...
+} catch (error) {
+  logger.warn("Failed to fetch allowed values", { error });
+  // Continue with deployment - show all inputs as free-text
+}
+```
+
+**Behavior**: Non-blocking error - form still shows but without allowed values
+
+**Validation Errors from API**:
+
+The `errors` array in the response indicates validation issues:
+
+```typescript
+{
+  "name": "instance_type",
+  "errors": ["Instance type must be selected from available options"],
+  "allowed_values": [...]
+}
+```
+
+**Current Behavior**: Errors are logged but not displayed to user (enhancement opportunity)
+
+#### 4.8 Caching Strategy
+
+**No Caching**: The extension does NOT cache allowed values because:
+
+1. **Dynamic Nature**: Allowed values may change between deployments (e.g., new agents added)
+2. **Dependency Changes**: Input dependencies mean values change based on other selections
+3. **Freshness**: Always show current state of the platform
+
+**What IS Cached**: Previous user selections (see Section 6: Value Caching)
+
+#### 4.9 Dependent Inputs (Future Enhancement)
+
+**Current Limitation**: The API supports dependent inputs, but the extension doesn't yet handle them dynamically.
+
+**Example Dependency**:
+
+```yaml
+inputs:
+  - name: cloud_provider
+    type: string
+  - name: region
+    type: string
+    # region options depend on cloud_provider selection
+```
+
+**Desired Behavior**:
+
+1. User selects "AWS" for cloud_provider
+2. Extension re-calls catalog API with updated input_values
+3. API returns only AWS regions for region input
+4. Form updates dynamically
+
+**Current Behavior**: Allowed values fetched once at form initialization
+
+**Implementation Note**: [DeployBlueprintAction.ts:144-167](../src/domains/blueprint-authoring/commands/actions/DeployBlueprintAction.ts#L144-L167) - single API call
+
+#### 4.10 Complete Catalog API Flow Diagram
+
+```
+┌──────────────────────────────────────────────┐
+│  User Triggers Deployment                   │
+└──────────────┬───────────────────────────────┘
+               │
+               v
+┌──────────────────────────────────────────────┐
+│  Parse Blueprint YAML                        │
+│  • Extract inputs array                      │
+│  • Get input names, types, defaults          │
+└──────────────┬───────────────────────────────┘
+               │
+               v
+┌──────────────────────────────────────────────┐
+│  Build Input Values Map                      │
+│  • Start with default values from blueprint  │
+│  • Create empty map for other inputs         │
+└──────────────┬───────────────────────────────┘
+               │
+               v
+┌──────────────────────────────────────────────┐
+│  Construct API Request                       │
+│  {                                           │
+│    input_values: { input1: "default" },      │
+│    input_definitions: [                      │
+│      { name: "input1", type: "string", ... } │
+│    ]                                         │
+│  }                                           │
+└──────────────┬───────────────────────────────┘
+               │
+               v
+┌──────────────────────────────────────────────┐
+│  POST /api/spaces/{space}/catalog/           │
+│       inputs_allowed_values                  │
+│                                              │
+│  • Authenticates with API token              │
+│  • Sends input schema + current values       │
+└──────────────┬───────────────────────────────┘
+               │
+               v
+┌──────────────────────────────────────────────┐
+│  Receive Response                            │
+│  [                                           │
+│    {                                         │
+│      name: "agent",                          │
+│      errors: [],                             │
+│      allowed_values: [                       │
+│        { value: "agent-1",                   │
+│          display_value: "Agent 1" }          │
+│      ]                                       │
+│    }                                         │
+│  ]                                           │
+└──────────────┬───────────────────────────────┘
+               │
+               v
+┌──────────────────────────────────────────────┐
+│  Build Allowed Values Map                    │
+│  Map {                                       │
+│    "agent" => [{ value: "agent-1", ... }],   │
+│    "region" => [{ value: "us-east-1", ... }] │
+│  }                                           │
+└──────────────┬───────────────────────────────┘
+               │
+               v
+┌──────────────────────────────────────────────┐
+│  Apply Auto-Selection                        │
+│  • If allowed_values.length === 1:           │
+│    - Pre-fill input with single value        │
+│    - Log auto-selection                      │
+└──────────────┬───────────────────────────────┘
+               │
+               v
+┌──────────────────────────────────────────────┐
+│  Prepare Form Input List                     │
+│  For each input:                             │
+│  • Check if allowed values exist             │
+│  • Determine field type (select vs text)     │
+│  • Get display labels                        │
+│  • Apply cached values if available          │
+└──────────────┬───────────────────────────────┘
+               │
+               v
+┌──────────────────────────────────────────────┐
+│  Show Deployment Form (DeploymentForm)       │
+│  • Display all inputs with proper types      │
+│  • Show dropdowns for inputs with options    │
+│  • Show text fields for free-form inputs     │
+│  • Display current/default values            │
+└──────────────────────────────────────────────┘
+```
+
+#### 4.11 API Request Example
+
+**Blueprint**:
+
+```yaml
+spec_version: 2
+inputs:
+  - name: agent
+    type: agent
+  - name: region
+    type: string
+    default: us-east-1
+  - name: instance_type
+    type: string
+grains:
+  # ...
+```
+
+**API Request**:
+
+```http
+POST /api/spaces/my-space/catalog/inputs_allowed_values
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "input_values": {
+    "region": "us-east-1"
+  },
+  "input_definitions": [
+    {
+      "name": "agent",
+      "type": "agent"
+    },
+    {
+      "name": "region",
+      "type": "string",
+      "default": "us-east-1"
+    },
+    {
+      "name": "instance_type",
+      "type": "string"
+    }
+  ]
+}
+```
+
+**API Response**:
+
+```json
+[
+  {
+    "name": "agent",
+    "errors": [],
+    "allowed_values": [
+      {
+        "value": "torque-agent-1",
+        "display_value": "Torque Agent 1",
+        "extra_details": {
+          "agent_type": "torque",
+          "quali_owned": true,
+          "status": "active"
+        }
+      }
+    ]
+  },
+  {
+    "name": "region",
+    "errors": [],
+    "allowed_values": [
+      { "value": "us-east-1", "display_value": "US East (N. Virginia)" },
+      { "value": "us-west-2", "display_value": "US West (Oregon)" },
+      { "value": "eu-west-1", "display_value": "EU (Ireland)" }
+    ]
+  },
+  {
+    "name": "instance_type",
+    "errors": [],
+    "allowed_values": [
+      { "value": "t2.micro", "display_value": null },
+      { "value": "t2.small", "display_value": null },
+      { "value": "t2.medium", "display_value": null }
+    ]
+  }
+]
+```
+
+**Result**:
+
+- `agent`: Auto-selected to "torque-agent-1" (single option)
+- `region`: Dropdown with 3 options, default "us-east-1" selected
+- `instance_type`: Dropdown with 3 options, no default
+
+### 5. Interactive Deployment Form
 
 The deployment form provides a multi-step interface for configuring environment deployment.
 

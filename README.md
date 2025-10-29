@@ -144,8 +144,10 @@ npm test
 # Lint code
 npm run lint
 
-# Create extension package
+# Create extension package (.vsix file)
 npm run package
+# or use vsce directly
+vsce package
 ```
 
 ### Project Structure
@@ -176,7 +178,7 @@ Complete feature specifications are available in the [spec/](spec/) directory:
 - [Extension Configuration](spec/extension_configuration.md)
 - [Torque Space Selection](spec/torque_space_selection.md)
 - [MCP Auto Installation](spec/mcp_auto_installation.md)
-- [Spec to Code Mapping](spec/SPEC_TO_CODE_MAPPING.md)
+- [Agent Instructions](spec/agent_instructions.md)
 
 ## License
 

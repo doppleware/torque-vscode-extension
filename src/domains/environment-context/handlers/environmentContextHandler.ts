@@ -212,10 +212,12 @@ const fetchAndAttachWorkflows = async (
           if (!workflowMap.has(workflowName)) {
             // First time seeing this workflow, create entry
             workflowMap.set(workflowName, {
-              inputs: instantiation.inputs.map((input) => ({
-                name: input.name,
-                type: input.type
-              })),
+              inputs: instantiation.inputs
+                .filter((input) => input.type !== "agent")
+                .map((input) => ({
+                  name: input.name,
+                  type: input.type
+                })),
               resources: new Set()
             });
           }

@@ -188,6 +188,11 @@ const enableRequiredSettings = async (): Promise<void> => {
 
 /**
  * Ensures GitHub Copilot instruction file exists and setting is enabled
+ *
+ * Automatically creates .github/copilot-instructions.md from the bundled template
+ * to provide AI assistants with Torque-specific tool usage guidance.
+ *
+ * @see {@link file://../spec/agent_instructions.md} Agent Instructions Specification
  */
 const registerAgentInstructions = async (
   context: vscode.ExtensionContext
