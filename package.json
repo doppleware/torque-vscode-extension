@@ -90,6 +90,12 @@
         "icon": "$(info)"
       },
       {
+        "command": "torque.recreateMcpServer",
+        "title": "Recreate MCP Server",
+        "category": "Torque",
+        "icon": "$(refresh)"
+      },
+      {
         "command": "torque.testUri",
         "title": "Test URI Handler",
         "category": "Torque",

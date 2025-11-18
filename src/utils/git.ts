@@ -145,3 +145,48 @@ export function normalizeGitUrl(url: string): string {
 export function isSameRepository(url1: string, url2: string): boolean {
   return normalizeGitUrl(url1) === normalizeGitUrl(url2);
 }
+
+/**
+ * Extracts the repository name from a Git URL
+ * Examples:
+ * - https://github.com/user/my-repo -> my-repo
+ * - git@github.com:user/my-repo.git -> my-repo
+ *
+ * @param url The Git URL
+ * @returns The repository name or null if unable to extract
+ */
+export function getRepositoryNameFromUrl(url: string): string | null {
+  try {
+    const normalized = normalizeGitUrl(url);
+
+    // Extract the last segment of the path
+    const parts = normalized.split("/");
+    const repoName = parts[parts.length - 1];
+
+    if (!repoName || repoName.trim().length === 0) {
+      return null;
+    }
+
+    return repoName.trim();
+  } catch (error) {
+    logger.error("Error extracting repository name from URL", error as Error);
+    return null;
+  }
+}
+
+/**
+ * Gets the repository name for the current workspace
+ *
+ * @param workspaceFolder The workspace folder to check (defaults to first workspace)
+ * @returns The repository name or null if not available
+ */
+export async function getRepositoryName(
+  workspaceFolder?: vscode.WorkspaceFolder
+): Promise<string | null> {
+  const remoteUrl = await getGitRemoteUrl(workspaceFolder);
+  if (!remoteUrl) {
+    return null;
+  }
+
+  return getRepositoryNameFromUrl(remoteUrl);
+}

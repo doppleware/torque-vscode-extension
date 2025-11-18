@@ -159,6 +159,7 @@ const fetchGrainResources = async (
 /**
  * Fetches workflows for all resources in all grains and attaches them to the grains
  * Groups workflows by workflow name and lists which resources they apply to
+ * Uses parallel API calls for better performance
  */
 const fetchAndAttachWorkflows = async (
   spaceName: string,
@@ -191,8 +192,12 @@ const fetchAndAttachWorkflows = async (
       }
     >();
 
-    // Fetch workflows for each resource in this grain
-    for (const resource of grainDetails.resources) {
+    logger.info(
+      `Fetching workflows for ${grainDetails.resources.length} resources in grain: ${grainName} (in parallel)`
+    );
+
+    // Fetch workflows for all resources in parallel using Promise.allSettled
+    const workflowPromises = grainDetails.resources.map(async (resource) => {
       try {
         logger.info(
           `Fetching workflows for resource: ${resource.name} in grain: ${grainName}`
@@ -204,6 +209,43 @@ const fetchAndAttachWorkflows = async (
           grainDetails.path,
           resource.name
         );
+
+        logger.info(
+          `Found ${workflowsData.instantiations?.length ?? 0} workflows for resource: ${resource.name}`
+        );
+
+        return {
+          resource: resource.name,
+          workflowsData,
+          success: true as const
+        };
+      } catch (error) {
+        logger.error(
+          `Error fetching workflows for resource ${resource.name}: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
+        return {
+          resource: resource.name,
+          error,
+          success: false as const,
+          workflowsData: undefined
+        };
+      }
+    });
+
+    // Wait for all workflow fetches to complete
+    const results = await Promise.allSettled(workflowPromises);
+
+    // Process results
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const result of results) {
+      if (
+        result.status === "fulfilled" &&
+        result.value.success &&
+        result.value.workflowsData
+      ) {
+        const { resource, workflowsData } = result.value;
 
         // Process each workflow instantiation
         for (const instantiation of workflowsData.instantiations || []) {
@@ -223,19 +265,17 @@ const fetchAndAttachWorkflows = async (
           }
 
           // Add this resource to the workflow's resource list
-          workflowMap.get(workflowName)!.resources.add(resource.name);
+          workflowMap.get(workflowName)!.resources.add(resource);
         }
-
-        logger.info(
-          `Found ${workflowsData.instantiations?.length ?? 0} workflows for resource: ${resource.name}`
-        );
-      } catch (error) {
-        logger.error(
-          `Error fetching workflows for resource ${resource.name}: ${error instanceof Error ? error.message : "Unknown error"}`
-        );
-        // Continue with other resources even if one fails
+        successCount++;
+      } else {
+        errorCount++;
       }
     }
+
+    logger.info(
+      `Workflow fetch completed for grain ${grainName}: ${successCount} succeeded, ${errorCount} failed`
+    );
 
     // Convert the workflow map to the final array format
     grainDetails.workflows = Array.from(workflowMap.entries()).map(

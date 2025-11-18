@@ -20,7 +20,9 @@ import {
   registerCreateBlueprintCommand,
   registerBlueprintActionsCommand,
   registerShowBlueprintEnvironmentsCommand,
+  registerAddGrainScriptCommand,
   BlueprintCodeLensProvider,
+  GrainScriptCodeLensProvider,
   registerGrainCompletionProvider
 } from "./domains/blueprint-authoring";
 
@@ -380,6 +382,14 @@ export async function activate(context: vscode.ExtensionContext) {
     blueprintCodeLensProvider
   );
 
+  // Register Grain Script CodeLens Provider
+  const grainScriptCodeLensProvider = new GrainScriptCodeLensProvider();
+  const grainScriptCodeLensDisposable =
+    vscode.languages.registerCodeLensProvider(
+      { language: "yaml", scheme: "file" },
+      grainScriptCodeLensProvider
+    );
+
   // Register Grain Completion Provider
   const grainCompletion = registerGrainCompletionProvider(
     settingsManager,
@@ -604,6 +614,75 @@ export async function activate(context: vscode.ExtensionContext) {
     logger.warn("Command torque.checkMcpStatus already registered, skipping");
   }
 
+  // Register recreate MCP server command
+  let recreateMcpServerCommand: vscode.Disposable | undefined;
+  try {
+    recreateMcpServerCommand = vscode.commands.registerCommand(
+      "torque.recreateMcpServer",
+      async () => {
+        const isConfigured = await isExtensionConfigured(settingsManager);
+        if (!isConfigured) {
+          const result = await vscode.window.showWarningMessage(
+            "Extension is not configured. Please configure Torque AI first.",
+            "Configure Now"
+          );
+          if (result === "Configure Now") {
+            await vscode.commands.executeCommand("torque.setup");
+          }
+          return;
+        }
+
+        const result = await vscode.window.showInformationMessage(
+          "This will recreate the MCP server registration. Continue?",
+          "Yes",
+          "No"
+        );
+
+        if (result !== "Yes") {
+          return;
+        }
+
+        try {
+          logger.info("Recreating MCP server configuration");
+
+          // Show progress while recreating
+          await vscode.window.withProgress(
+            {
+              location: vscode.ProgressLocation.Notification,
+              title: "Recreating MCP server...",
+              cancellable: false
+            },
+            async (progress) => {
+              progress.report({ increment: 0 });
+
+              // Reinitialize the client and MCP server without success message
+              // (success message shown after progress closes)
+              await initializeClient(settingsManager, false, true, true);
+
+              progress.report({ increment: 100 });
+            }
+          );
+
+          // Show success message after progress notification closes
+          await showMcpSetupSuccessMessage();
+
+          logger.info("MCP server recreated successfully");
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          logger.error("Failed to recreate MCP server", error as Error);
+          vscode.window.showErrorMessage(
+            `Failed to recreate MCP server: ${errorMessage}`
+          );
+        }
+      }
+    );
+  } catch {
+    logger.warn(
+      "Command torque.recreateMcpServer already registered, skipping"
+    );
+  }
+
   // Register unified setup command
   // Register setup command
   const setupCommand = registerSetupCommand(settingsManager, initializeClient);
@@ -666,6 +745,9 @@ export async function activate(context: vscode.ExtensionContext) {
   const showBlueprintEnvironmentsCommand =
     registerShowBlueprintEnvironmentsCommand();
 
+  // Register add grain script command
+  const addGrainScriptCommand = registerAddGrainScriptCommand();
+
   context.subscriptions.push(configChangeListener);
   if (setupCommand) {
     context.subscriptions.push(setupCommand);
@@ -685,6 +767,9 @@ export async function activate(context: vscode.ExtensionContext) {
   if (checkMcpStatusCommand) {
     context.subscriptions.push(checkMcpStatusCommand);
   }
+  if (recreateMcpServerCommand) {
+    context.subscriptions.push(recreateMcpServerCommand);
+  }
   if (testUriCommand) {
     context.subscriptions.push(testUriCommand);
   }
@@ -700,7 +785,11 @@ export async function activate(context: vscode.ExtensionContext) {
   if (showBlueprintEnvironmentsCommand) {
     context.subscriptions.push(showBlueprintEnvironmentsCommand);
   }
+  if (addGrainScriptCommand) {
+    context.subscriptions.push(addGrainScriptCommand);
+  }
   context.subscriptions.push(codeLensDisposable);
+  context.subscriptions.push(grainScriptCodeLensDisposable);
   context.subscriptions.push(grainCompletion.disposable);
 
   const uriHandler = vscode.window.registerUriHandler({

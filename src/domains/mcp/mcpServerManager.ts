@@ -25,7 +25,7 @@ const createMcpServerDefinition = (
   url: string,
   token: string
 ): vscode.McpHttpServerDefinition => {
-  const mcpServerUrl = `${url}/api/torque_mcp`;
+  const mcpServerUrl = `${url}/mcp`;
 
   // eslint-disable-next-line no-console
   console.log(
@@ -81,7 +81,7 @@ const checkMcpServerHealth = async (
   url: string,
   token: string
 ): Promise<McpHealthCheckResult> => {
-  const mcpServerUrl = `${url}/api/torque_mcp`;
+  const mcpServerUrl = `${url}/mcp`;
   const startTime = Date.now();
 
   try {
