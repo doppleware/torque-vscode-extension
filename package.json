@@ -6,7 +6,7 @@
   "publisher": "quali",
   "icon": "logo.png",
   "engines": {
-    "vscode": "^1.105.0"
+    "vscode": "^1.106.0"
   },
   "keywords": [
     "PlaformEngineering",
