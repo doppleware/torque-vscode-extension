@@ -147,7 +147,7 @@ export class TorqueEnvironmentDetailsTool
       const simplifiedDetails = await getComprehensiveEnvironmentDetails(
         space_name,
         environment_id,
-        this.client
+        this.getApiClient()
       );
 
       // Convert to YAML format for better readability

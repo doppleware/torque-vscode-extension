@@ -59,8 +59,9 @@ suite("End-to-End Integration Test", () => {
   });
 
   setup(() => {
-    // Clear request log before each test
+    // Clear request logs before each test
     mockServer.clearRequestLog();
+    mockServer.clearIntrospectionRequestLog();
 
     // Reset mock functions
     (vscode.window as any).showInputBox = originalShowInputBox;
@@ -198,12 +199,16 @@ suite("End-to-End Integration Test", () => {
       "Result should not contain error message"
     );
     assert.ok(
-      resultText.includes("Environment Details"),
-      "Result should contain environment details"
+      resultText.includes("Environment Context"),
+      "Result should contain environment context header"
     );
     assert.ok(
       resultText.includes(testEnvironmentId),
       "Result should contain the environment ID"
+    );
+    assert.ok(
+      resultText.includes("```yaml"),
+      "Result should contain YAML code block"
     );
 
     console.log("API call completed successfully");
@@ -230,6 +235,7 @@ suite("End-to-End Integration Test", () => {
 
     // Clear previous requests
     mockServer.clearRequestLog();
+    mockServer.clearIntrospectionRequestLog();
 
     // Make API call via tool
     const tool = new TestTorqueEnvironmentDetailsTool();
@@ -246,14 +252,14 @@ suite("End-to-End Integration Test", () => {
 
     await tool.invoke(mockOptions);
 
-    // Verify server received the request
+    // Verify server received multiple requests (environment details + introspection + workflows)
     const requestLog = mockServer.getRequestLog();
-    assert.strictEqual(
-      requestLog.length,
-      1,
-      "Server should receive exactly one request"
+    assert.ok(
+      requestLog.length >= 1,
+      "Server should receive at least one request for environment details"
     );
 
+    // The first request should be for environment details
     const request = requestLog[0];
     assert.strictEqual(
       request.spaceName,
@@ -264,6 +270,13 @@ suite("End-to-End Integration Test", () => {
       request.environmentId,
       testEnvironmentId,
       "Server should receive correct environment ID"
+    );
+
+    // Verify introspection requests were made
+    const introspectionLog = mockServer.getIntrospectionRequestLog();
+    assert.ok(
+      introspectionLog.length > 0,
+      "Server should receive introspection requests for grains"
     );
 
     console.log("Server verification completed successfully");
@@ -372,30 +385,19 @@ suite("End-to-End Integration Test", () => {
       .map((item: any) => item.value || "")
       .join("");
 
-    // Should contain expected environment details sections
+    // Should contain expected environment context sections with YAML format
     assert.ok(
-      resultText.includes("## Environment Details:"),
-      "Should have environment details header"
+      resultText.includes("## Environment Context:"),
+      "Should have environment context header"
     );
     assert.ok(
-      resultText.includes("**Space**:"),
-      "Should show space information"
+      resultText.includes("```yaml"),
+      "Should contain YAML code block start"
     );
+    assert.ok(resultText.includes("```"), "Should contain code block end");
     assert.ok(
-      resultText.includes("**Environment ID**:"),
-      "Should show environment ID"
-    );
-    assert.ok(
-      resultText.includes("👤 **Owner**:"),
-      "Should show owner information"
-    );
-    assert.ok(
-      resultText.includes("💰 **Cost**:"),
-      "Should show cost information"
-    );
-    assert.ok(
-      resultText.includes("🕒 **Last Used**:"),
-      "Should show last used information"
+      resultText.includes(testEnvironmentId),
+      "Should show environment ID in context"
     );
 
     // Should not contain error indicators

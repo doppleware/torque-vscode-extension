@@ -259,137 +259,39 @@ suite("Environment Context URL Handler Integration Tests", () => {
         assert.ok(fileUri, "Should have file URI");
         assert.ok(fileUri.fsPath, "Should have file path");
 
-        // Verify the file is a YAML file
+        // Verify the file is a MD file (instruction file)
         assert.ok(
-          fileUri.fsPath.endsWith(".yaml"),
-          "File should have .yaml extension"
+          fileUri.fsPath.endsWith(".md"),
+          "File should have .md extension"
         );
 
         // Read and verify the file content
         const fileContent = fs.readFileSync(fileUri.fsPath, "utf8");
-        const parsedContent = yaml.load(fileContent) as any;
 
-        // Verify new simplified schema structure
-        assert.ok(parsedContent.environment_id, "Should have environment_id");
-        assert.ok(parsedContent.space_name, "Should have space_name");
-        assert.strictEqual(
-          parsedContent.space_name,
-          spaceName,
-          "Space name should match"
-        );
-        assert.ok(parsedContent.status, "Should have status");
+        // Verify instruction file structure
         assert.ok(
-          Array.isArray(parsedContent.inputs),
-          "Should have inputs array at environment level"
-        );
-        assert.strictEqual(
-          parsedContent.inputs.length,
-          1,
-          "Should have 1 environment-level input"
-        );
-        assert.strictEqual(
-          parsedContent.inputs[0].name,
-          "test-input",
-          "Environment input should have correct name"
-        );
-        assert.strictEqual(
-          parsedContent.inputs[0].value,
-          "test-value",
-          "Environment input should have correct value"
+          fileContent.includes("# Torque Environment Context"),
+          "Should have context header"
         );
         assert.ok(
-          Array.isArray(parsedContent.grains),
-          "Should have grains array"
-        );
-
-        // Verify grains content
-        assert.strictEqual(
-          parsedContent.grains.length,
-          2,
-          "Should have 2 grains"
-        );
-
-        // Verify grain structure - grains are objects with grain name as key
-        const grain1 = parsedContent.grains[0];
-        assert.ok(grain1["test-grain-1"], "Should have test-grain-1 grain");
-
-        const grain1Details = grain1["test-grain-1"];
-        assert.ok(grain1Details.path, "Grain should have path");
-        assert.ok(grain1Details.kind, "Grain should have kind");
-        assert.ok(
-          grain1Details.execution_host,
-          "Grain should have execution_host"
+          fileContent.includes(`**Space**: ${spaceName}`),
+          "Should include space name"
         );
         assert.ok(
-          Array.isArray(grain1Details.inputs),
-          "Grain should have inputs array"
-        );
-        assert.strictEqual(
-          grain1Details.inputs.length,
-          2,
-          "Grain should have 2 inputs"
-        );
-        assert.strictEqual(
-          grain1Details.inputs[0].name,
-          "instance_type",
-          "Grain input should have correct name"
-        );
-        assert.strictEqual(
-          grain1Details.inputs[0].value,
-          "t3.medium",
-          "Grain input should have correct value"
-        );
-        assert.ok(grain1Details.state, "Grain should have state");
-        assert.ok(
-          grain1Details.state.current_state,
-          "Grain state should have current_state"
+          fileContent.includes(`**Environment ID**: ${environmentId}`),
+          "Should include environment ID"
         );
         assert.ok(
-          Array.isArray(grain1Details.state.activities),
-          "Grain state should have activities array"
+          fileContent.includes("torque_get_environment_details"),
+          "Should reference the tool name"
         );
         assert.ok(
-          Array.isArray(grain1Details.resources),
-          "Grain should have resources array"
+          fileContent.includes("Instructions for AI"),
+          "Should have AI instructions section"
         );
 
-        // Verify resources structure (only name and type)
-        assert.strictEqual(
-          grain1Details.resources.length,
-          2,
-          "Should have 2 resources for grain 1"
-        );
-
-        const resource = grain1Details.resources[0];
-        assert.ok(resource.name, "Resource should have name");
-        assert.ok(resource.type, "Resource should have type");
-
-        // Verify simplified schema excludes unnecessary fields
-        assert.strictEqual(
-          parsedContent.owner,
-          undefined,
-          "Should not include owner"
-        );
-        assert.strictEqual(
-          parsedContent.collaborators_info,
-          undefined,
-          "Should not include collaborators_info"
-        );
-        assert.strictEqual(
-          parsedContent.cost,
-          undefined,
-          "Should not include cost"
-        );
-        assert.strictEqual(
-          parsedContent.state,
-          undefined,
-          "Should not include old state field"
-        );
-        assert.strictEqual(
-          parsedContent.outputs,
-          undefined,
-          "Should not include outputs field"
-        );
+        // Note: The file now contains instructions for AI to use the tool
+        // The actual environment data is fetched on-demand via torque_get_environment_details tool
 
         // Verify notification message
         assert.strictEqual(
