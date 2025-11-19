@@ -87,6 +87,9 @@ export class DeployBlueprintAction extends BaseBlueprintAction {
       const document = await vscode.workspace.openTextDocument(uri);
       const content = document.getText();
 
+      // Convert content to base64 for standalone blueprint deployment
+      const contentBase64 = Buffer.from(content).toString("base64");
+
       const blueprintName = this.getBlueprintName(uri);
 
       logger.info(
@@ -233,6 +236,8 @@ export class DeployBlueprintAction extends BaseBlueprintAction {
       logger.info(`Blueprint Name: ${blueprintName}`);
       logger.info(`Space: ${spaceName}`);
       logger.info(`Inputs: ${JSON.stringify(inputValues, null, 2)}`);
+      logger.info(`Content Length: ${content.length} characters`);
+      logger.info(`Base64 Length: ${contentBase64.length} characters`);
       logger.info("======================");
 
       // Deploy the environment with progress
@@ -247,7 +252,8 @@ export class DeployBlueprintAction extends BaseBlueprintAction {
             environment_name: environmentName,
             blueprint_name: blueprintName,
             inputs: inputValues,
-            automation: false
+            automation: false,
+            base64_standalone_blueprint: contentBase64
           });
 
           logger.info("=== Deploy Successful ===");

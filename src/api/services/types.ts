@@ -322,6 +322,7 @@ export interface DeployEnvironmentRequest {
   duration?: string;
   automation?: boolean;
   description?: string;
+  base64_standalone_blueprint?: string;
 }
 
 export interface DeployEnvironmentResponse {
