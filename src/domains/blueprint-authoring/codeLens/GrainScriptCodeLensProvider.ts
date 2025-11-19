@@ -1,10 +1,10 @@
 /**
  * Grain Script CodeLens Provider
  *
- * Provides CodeLens above each grain element in blueprint YAML files showing:
- * - "Add Script" action to add post-helm-install scripts to grains
+ * Provides CodeLens above each Helm grain element in blueprint YAML files showing:
+ * - "Add Script" action to add post-helm-install scripts to Helm grains
  *
- * A grain is identified as a root-level element under the 'grains:' section.
+ * Only grains with `kind: helm` will show the CodeLens.
  */
 
 import * as vscode from "vscode";
@@ -58,6 +58,7 @@ export class GrainScriptCodeLensProvider implements vscode.CodeLensProvider {
   /**
    * Find all grain definitions in the document
    * Returns an array of grain names and their line numbers
+   * Only includes grains with kind: helm
    */
   private findGrainPositions(
     document: vscode.TextDocument
@@ -67,6 +68,7 @@ export class GrainScriptCodeLensProvider implements vscode.CodeLensProvider {
 
     const grains: { grainName: string; line: number }[] = [];
     let inGrainsSection = false;
+    let currentGrain: { grainName: string; line: number } | null = null;
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
@@ -80,6 +82,7 @@ export class GrainScriptCodeLensProvider implements vscode.CodeLensProvider {
       // If we hit another top-level section, exit grains section
       if (inGrainsSection && /^[a-zA-Z_][a-zA-Z0-9_-]*:\s*$/.test(line)) {
         inGrainsSection = false;
+        currentGrain = null;
       }
 
       // If we're in the grains section, look for grain definitions (2-space indent)
@@ -87,7 +90,18 @@ export class GrainScriptCodeLensProvider implements vscode.CodeLensProvider {
         const grainMatch = /^ {2}([a-zA-Z0-9_-]+):\s*$/.exec(line);
         if (grainMatch) {
           const grainName = grainMatch[1];
-          grains.push({ grainName, line: i });
+          // Save the previous grain position before replacing it
+          currentGrain = { grainName, line: i };
+          continue;
+        }
+
+        // Check if current grain has kind: helm (4-space indent)
+        if (currentGrain) {
+          const kindMatch = /^ {4}kind:\s*helm\s*$/.exec(line);
+          if (kindMatch) {
+            grains.push(currentGrain);
+            currentGrain = null; // Reset to avoid duplicates
+          }
         }
       }
     }

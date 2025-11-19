@@ -98,7 +98,7 @@ grains:
     );
   });
 
-  test("Should find multiple grain definitions", async () => {
+  test("Should find multiple Helm grain definitions and skip non-Helm grains", async () => {
     const content = `# yaml-language-server: $schema=https://raw.githubusercontent.com/QualiTorque/torque-vs-code-extensions/master/client/schemas/blueprint-spec2-schema.json
 spec_version: 2
 description: 'Test blueprint'
@@ -129,7 +129,11 @@ grains:
 
     const codeLenses = codeLensProvider.provideCodeLenses(doc);
 
-    assert.strictEqual(codeLenses.length, 3, "Should find three grains");
+    assert.strictEqual(
+      codeLenses.length,
+      2,
+      "Should find only two Helm grains"
+    );
 
     // Verify all CodeLenses have the correct command
     codeLenses.forEach((codeLens, index) => {
@@ -144,14 +148,14 @@ grains:
       );
     });
 
-    // Verify grain names are passed as arguments
+    // Verify grain names are passed as arguments (should only include Helm grains)
     const grainNames = codeLenses
       .map((cl) => cl.command?.arguments?.[1] as string)
       .filter(Boolean);
     assert.deepStrictEqual(
       grainNames,
-      ["nginx", "postgres", "redis"],
-      "Should pass correct grain names as arguments"
+      ["nginx", "redis"],
+      "Should pass only Helm grain names as arguments"
     );
   });
 
@@ -279,7 +283,7 @@ grains:
     );
   });
 
-  test("Should handle grains with hyphens and underscores in names", async () => {
+  test("Should handle Helm grains with hyphens and underscores in names", async () => {
     const content = `# yaml-language-server: $schema=https://raw.githubusercontent.com/QualiTorque/torque-vs-code-extensions/master/client/schemas/blueprint-spec2-schema.json
 spec_version: 2
 description: 'Test blueprint'
@@ -298,15 +302,47 @@ grains:
 
     const codeLenses = codeLensProvider.provideCodeLenses(doc);
 
-    assert.strictEqual(codeLenses.length, 3, "Should find all three grains");
+    assert.strictEqual(codeLenses.length, 2, "Should find only Helm grains");
 
     const grainNames = codeLenses
       .map((cl) => cl.command?.arguments?.[1] as string)
       .filter(Boolean);
     assert.deepStrictEqual(
       grainNames,
-      ["my-nginx-service", "postgres_db", "redis-cache_v2"],
-      "Should correctly parse grain names with hyphens and underscores"
+      ["my-nginx-service", "redis-cache_v2"],
+      "Should correctly parse Helm grain names with hyphens and underscores"
+    );
+  });
+
+  test("Should not show CodeLens for non-Helm grains", async () => {
+    const content = `# yaml-language-server: $schema=https://raw.githubusercontent.com/QualiTorque/torque-vs-code-extensions/master/client/schemas/blueprint-spec2-schema.json
+spec_version: 2
+description: 'Test blueprint with only non-Helm grains'
+grains:
+  postgres:
+    kind: terraform
+    spec:
+      source:
+        store: my-repo
+        path: postgres-module
+  ec2:
+    kind: terraform
+    spec:
+      source:
+        store: my-repo
+        path: ec2-module`;
+
+    const doc = await vscode.workspace.openTextDocument({
+      language: "yaml",
+      content
+    });
+
+    const codeLenses = codeLensProvider.provideCodeLenses(doc);
+
+    assert.strictEqual(
+      codeLenses.length,
+      0,
+      "Should not provide CodeLens for non-Helm grains (terraform)"
     );
   });
 });
