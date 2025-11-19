@@ -328,8 +328,49 @@ export async function activate(context: vscode.ExtensionContext) {
     void showSetupNotificationIfNeeded(settingsManager, context);
   }, 2000);
 
-  // Language Model Tools are automatically registered from package.json
-  // The torque_get_environment_details tool is declared in package.json and will be automatically available
+  // Register Language Model Tools
+  // The tools are declared in package.json but must be registered with handlers
+  if (vscode.lm && typeof vscode.lm.registerTool === "function") {
+    try {
+      // Register environment details tool
+      const { TorqueEnvironmentDetailsTool } = await import(
+        "./domains/environment-context/tools/TorqueEnvironmentDetailsTool"
+      );
+      const environmentTool = vscode.lm.registerTool(
+        "torque_get_environment_details",
+        new TorqueEnvironmentDetailsTool()
+      );
+      context.subscriptions.push(environmentTool);
+      logger.info(
+        "✅ Successfully registered torque_get_environment_details Language Model Tool"
+      );
+
+      // Register current space tool
+      const { TorqueCurrentSpaceTool } = await import(
+        "./domains/setup/tools/TorqueCurrentSpaceTool"
+      );
+      const currentSpaceTool = vscode.lm.registerTool(
+        "get_current_torque_space",
+        new TorqueCurrentSpaceTool(settingsManager)
+      );
+      context.subscriptions.push(currentSpaceTool);
+      logger.info(
+        "✅ Successfully registered get_current_torque_space Language Model Tool"
+      );
+    } catch (error) {
+      logger.error(
+        "Failed to register Language Model Tools",
+        error instanceof Error ? error : new Error(String(error))
+      );
+      vscode.window.showWarningMessage(
+        "Failed to register Torque tools. Some AI features may not work."
+      );
+    }
+  } else {
+    logger.warn(
+      "Language Model Tool API not available in this VS Code version. Please ensure you're using VS Code 1.101 or later with GitHub Copilot installed."
+    );
+  }
 
   uriRouter.route(
     "/chat/context/add/environment/:space_name/:environment_id",

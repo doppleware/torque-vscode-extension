@@ -135,19 +135,30 @@ export class TorqueEnvironmentDetailsTool
     const { space_name, environment_id } = options.input;
 
     try {
-      const environmentDetails = await this.getEnvironmentDetails(
-        space_name,
-        environment_id
+      // Import the utilities we need
+      const { EnvironmentDetailsTransformer } = await import(
+        "../transformers/EnvironmentDetailsTransformer"
       );
-      const formattedDetails = this.formatEnvironmentDetails(
-        environmentDetails,
-        space_name,
-        environment_id
+      const { getComprehensiveEnvironmentDetails } = await import(
+        "../handlers/environmentContextHandler"
       );
+
+      // Fetch comprehensive environment details (with grains, resources, workflows)
+      const simplifiedDetails = await getComprehensiveEnvironmentDetails(
+        space_name,
+        environment_id,
+        this.client
+      );
+
+      // Convert to YAML format for better readability
+      const yamlContent =
+        EnvironmentDetailsTransformer.toYAML(simplifiedDetails);
 
       return new vscode.LanguageModelToolResult([
         new vscode.LanguageModelTextPart(
-          `## Environment Details: ${environment_id}\n\n${formattedDetails}`
+          `## Environment Context: ${environment_id}\n\n` +
+            `Here is the complete environment configuration including grains, resources, and workflows:\n\n` +
+            `\`\`\`yaml\n${yamlContent}\n\`\`\``
         )
       ]);
     } catch (error) {

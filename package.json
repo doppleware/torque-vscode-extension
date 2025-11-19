@@ -137,8 +137,13 @@
     "languageModelTools": [
       {
         "name": "torque_get_environment_details",
+        "tags": ["torque", "environment", "infrastructure"],
+        "toolReferenceName": "torque_get_environment_details",
         "displayName": "Get Torque Environment Details",
-        "modelDescription": "Retrieve detailed information about a specific Torque environment including owner, cost, connections, and configuration",
+        "modelDescription": "Retrieve detailed information about a specific Torque environment including owner, cost, connections, grains, resources, and available workflows",
+        "userDescription": "Get comprehensive details about a Torque environment including all infrastructure resources and automation workflows",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(cloud)",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -155,6 +160,20 @@
             "space_name",
             "environment_id"
           ]
+        }
+      },
+      {
+        "name": "get_current_torque_space",
+        "tags": ["torque", "space", "configuration"],
+        "toolReferenceName": "get_current_torque_space",
+        "displayName": "Get Current Torque Space",
+        "modelDescription": "Get the name of the currently active Torque space. Returns the active space if set, otherwise returns the default space",
+        "userDescription": "Get the currently selected or default Torque space name",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(folder)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
         }
       }
     ],

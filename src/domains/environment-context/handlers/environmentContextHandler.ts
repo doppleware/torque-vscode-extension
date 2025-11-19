@@ -21,10 +21,10 @@ import os from "os";
 import path from "path";
 import vscode from "vscode";
 import type { ApiClient } from "../../../api/ApiClient";
-import { TorqueEnvironmentDetailsTool } from "../tools/TorqueEnvironmentDetailsTool";
-import { getIdeCommand } from "../../../ides/ideCommands";
 import { getClient } from "../../../extension";
+import { getIdeCommand } from "../../../ides/ideCommands";
 import { logger } from "../../../utils/Logger";
+import { TorqueEnvironmentDetailsTool } from "../tools/TorqueEnvironmentDetailsTool";
 import {
   EnvironmentDetailsTransformer,
   type SimplifiedEnvironmentDetails
@@ -293,6 +293,48 @@ const fetchAndAttachWorkflows = async (
 };
 
 /**
+ * Exported function to get comprehensive environment details
+ * Used by the Language Model Tool to fetch environment data on demand
+ */
+export const getComprehensiveEnvironmentDetails = async (
+  spaceName: string,
+  environmentId: string,
+  client?: ApiClient
+): Promise<SimplifiedEnvironmentDetails> => {
+  // Step 1: Fetch environment details
+  const environmentTool = new TorqueEnvironmentDetailsTool(client);
+  const environmentDetails = await environmentTool.getEnvironmentDetailsJson(
+    spaceName,
+    environmentId
+  );
+
+  // Step 2: Extract grain names and fetch resources
+  const grainNames = extractGrainNames(environmentDetails);
+  const grainResources = await fetchGrainResources(
+    spaceName,
+    environmentId,
+    grainNames,
+    client
+  );
+
+  // Step 3: Transform data
+  const simplifiedDetails = EnvironmentDetailsTransformer.transform(
+    environmentDetails,
+    grainResources
+  );
+
+  // Step 4: Fetch workflows
+  await fetchAndAttachWorkflows(
+    spaceName,
+    environmentId,
+    simplifiedDetails,
+    client
+  );
+
+  return simplifiedDetails;
+};
+
+/**
  * Searches for a YAML file with the blueprint name in the workspace and opens it if found
  * @param searchName - The blueprint name (or environment name as fallback) to search for
  */
@@ -484,19 +526,30 @@ const attachEnvironmentFileToChatContextInternal = async (
     );
   }
 
-  // Create temporary file with environment name
+  // Create a simple instruction file with environment ID
+  // The AI will use the torque_get_environment_details tool to fetch full details on demand
   const tempDir = os.tmpdir();
-  // Sanitize the environment name for use in filename
   const sanitizedName = environmentName.replace(/[^a-zA-Z0-9-_]/g, "_");
-  const fileName = `${sanitizedName}.yaml`;
+  const fileName = `${sanitizedName}.md`;
   const filePath = path.join(tempDir, fileName);
 
-  // Write simplified YAML content to file
-  fs.writeFileSync(
-    filePath,
-    EnvironmentDetailsTransformer.toYAML(simplifiedDetails),
-    "utf8"
-  );
+  // Create instruction content that tells the AI to use the tool
+  const instructionContent = `# Torque Environment Context
+
+**Space**: ${spaceName}
+**Environment ID**: ${environmentId}
+**Environment Name**: ${environmentName}
+
+## Instructions for AI
+
+The environment "${environmentId}" is the current environment in scope.
+To answer any questions by the user you can first use the **torque_get_environment_details** tool 
+to get a list of all infrastructure resources in the environment and available automation workflows.
+Use this information in conjunction with MCP and other tools to help the user accomplish their goals.
+`;
+
+  // Write instruction content to file
+  fs.writeFileSync(filePath, instructionContent, "utf8");
 
   progress?.report({ increment: 5 });
 
