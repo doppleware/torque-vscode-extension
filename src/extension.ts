@@ -189,10 +189,11 @@ const enableRequiredSettings = async (): Promise<void> => {
 };
 
 /**
- * Ensures GitHub Copilot instruction file exists and setting is enabled
+ * Installs GitHub Copilot instruction file and enables setting
  *
- * Automatically creates .github/copilot-instructions.md from the bundled template
+ * Automatically installs/updates .github/copilot-instructions.md from the bundled template
  * to provide AI assistants with Torque-specific tool usage guidance.
+ * This will overwrite any existing file to ensure users have the latest Torque instructions.
  *
  * @see {@link file://../spec/agent_instructions.md} Agent Instructions Specification
  */
@@ -231,43 +232,37 @@ const registerAgentInstructions = async (
       "copilot-instructions.md"
     );
 
-    // Check if instruction file already exists
+    // Always install/update the Torque instruction file
+    logger.info("Installing/updating GitHub Copilot instruction file");
+
+    // Ensure .github directory exists
     try {
-      await vscode.workspace.fs.stat(instructionFile);
-      logger.debug("GitHub Copilot instruction file already exists");
+      await vscode.workspace.fs.createDirectory(githubDir);
     } catch {
-      // File doesn't exist, create it with Torque instructions
-      logger.info("Creating GitHub Copilot instruction file");
+      // Directory might already exist, ignore error
+    }
 
-      // Ensure .github directory exists
-      try {
-        await vscode.workspace.fs.createDirectory(githubDir);
-      } catch {
-        // Directory might already exist, ignore error
-      }
+    // Read the Torque instruction template from the extension directory
+    const extensionPath = context.extensionUri;
+    const templateFile = vscode.Uri.joinPath(
+      extensionPath,
+      "docs",
+      "torque_dev_instruction.md"
+    );
 
-      // Read the Torque instruction template from the extension directory
-      const extensionPath = context.extensionUri;
-      const templateFile = vscode.Uri.joinPath(
-        extensionPath,
-        "docs",
-        "torque_dev_instruction.md"
+    try {
+      const content = await vscode.workspace.fs.readFile(templateFile);
+      await vscode.workspace.fs.writeFile(instructionFile, content);
+      logger.info(
+        "Successfully installed GitHub Copilot instruction file from Torque template"
       );
-
-      try {
-        const content = await vscode.workspace.fs.readFile(templateFile);
-        await vscode.workspace.fs.writeFile(instructionFile, content);
-        logger.info(
-          "Created GitHub Copilot instruction file from Torque template"
-        );
-      } catch (error) {
-        logger.warn(
-          "Could not copy Torque instruction template to Copilot instruction file",
-          {
-            error: error instanceof Error ? error.message : String(error)
-          }
-        );
-      }
+    } catch (error) {
+      logger.warn(
+        "Could not copy Torque instruction template to Copilot instruction file",
+        {
+          error: error instanceof Error ? error.message : String(error)
+        }
+      );
     }
 
     logger.debug("Agent instructions setup completed");
