@@ -1,19 +1,19 @@
+import { logger } from "../../utils/Logger";
 import { Service } from "./Service";
 import type {
-  Space,
-  Repository,
-  IacAssetsResponse,
+  AllowedValuesRequest,
+  AllowedValuesResponse,
   BlueprintValidationRequest,
   BlueprintValidationResponse,
   CatalogAssetResponse,
-  IntrospectionResponse,
-  WorkflowsResponse,
-  AllowedValuesRequest,
-  AllowedValuesResponse,
   DeployEnvironmentRequest,
-  DeployEnvironmentResponse
+  DeployEnvironmentResponse,
+  IacAssetsResponse,
+  IntrospectionResponse,
+  Repository,
+  Space,
+  WorkflowsResponse
 } from "./types";
-import { logger } from "../../utils/Logger";
 
 export class SpacesService extends Service {
   protected readonly basePath = "/api";
@@ -44,16 +44,136 @@ export class SpacesService extends Service {
   }
 
   /**
-   * Fetches the list of IAC assets (grains) for a specific space
+   * Fetches a single page of IAC assets (grains) for a specific space
    *
    * @param spaceName The name of the space
+   * @param skip Number of items to skip (offset for pagination)
+   * @param take Number of items to take (page size, default 100)
    * @returns Promise<IacAssetsResponse> Response containing IAC assets and paging info
    */
-  async getIacAssets(spaceName: string): Promise<IacAssetsResponse> {
-    const response = await this.client.client.get<IacAssetsResponse>(
-      this.getUrl(`spaces/${encodeURIComponent(spaceName)}/iac-assets`)
+  async getIacAssets(
+    spaceName: string,
+    skip = 0,
+    take = 100
+  ): Promise<IacAssetsResponse> {
+    const baseUrl = this.getUrl(
+      `spaces/${encodeURIComponent(spaceName)}/iac-assets`
     );
+
+    // Construct query parameters using skip/take pagination
+    const queryParams = new URLSearchParams();
+    queryParams.append("skip", skip.toString());
+    queryParams.append("take", take.toString());
+
+    const fullUrl = `${baseUrl}?${queryParams.toString()}`;
+
+    logger.info(`=== IAC Assets Request ===`);
+    logger.info(`URL: ${fullUrl}`);
+    logger.info(`Space: ${spaceName}`);
+    logger.info(`Skip: ${skip} items`);
+    logger.info(`Take: ${take} items`);
+    logger.info(`========================`);
+
+    const response = await this.client.client.get<IacAssetsResponse>(fullUrl);
+
+    logger.info(`=== IAC Assets Response (skip=${skip}, take=${take}) ===`);
+    logger.info(`Assets in response: ${response.data.iac_assets.length}`);
+    logger.info(`Paging info:`, response.data.paging_info);
+    if (response.data.iac_assets.length > 0) {
+      logger.info(`First asset: ${response.data.iac_assets[0].name}`);
+      logger.info(
+        `Last asset: ${response.data.iac_assets[response.data.iac_assets.length - 1].name}`
+      );
+    }
+    logger.info(`=====================================`);
+
     return response.data;
+  }
+
+  /**
+   * Fetches all IAC assets (grains) for a specific space across all pages
+   * Loads pages asynchronously for better performance
+   *
+   * @param spaceName The name of the space
+   * @returns Promise<IacAssetsResponse> Response containing all IAC assets and paging info
+   */
+  async getAllIacAssets(spaceName: string): Promise<IacAssetsResponse> {
+    logger.info(`=== getAllIacAssets START ===`);
+    logger.info(`Space: ${spaceName}`);
+
+    const pageSize = 100;
+
+    // Fetch first page (skip=0, take=100) to get total count
+    const firstPage = await this.getIacAssets(spaceName, 0, pageSize);
+
+    logger.info(
+      `First page received: ${firstPage.iac_assets.length} assets, ${firstPage.paging_info.total_pages} total pages, ${firstPage.paging_info.full_count} full count`
+    );
+
+    const totalCount = firstPage.paging_info.full_count;
+    const fetchedCount = firstPage.iac_assets.length;
+
+    // If we got everything in the first request, return it
+    if (fetchedCount >= totalCount) {
+      logger.info(
+        `All assets fetched in first page, returning ${fetchedCount} assets`
+      );
+      logger.info(`=== getAllIacAssets END ===`);
+      return firstPage;
+    }
+
+    // Calculate how many more requests we need
+    const remainingCount = totalCount - fetchedCount;
+    const additionalPages = Math.ceil(remainingCount / pageSize);
+
+    // Generate skip values for remaining pages (100, 200, 300, ...)
+    const skipValues = Array.from(
+      { length: additionalPages },
+      (_, i) => (i + 1) * pageSize
+    );
+
+    logger.info(
+      `Fetching ${additionalPages} additional page(s) with skip values: [${skipValues.join(", ")}]`
+    );
+
+    const remainingPagesData = await Promise.all(
+      skipValues.map((skip) => this.getIacAssets(spaceName, skip, pageSize))
+    );
+
+    logger.info(`All additional pages received`);
+    remainingPagesData.forEach((pageData, index) => {
+      logger.info(
+        `  Skip ${skipValues[index]}: ${pageData.iac_assets.length} assets`
+      );
+    });
+
+    // Combine all assets
+    const allAssets = [
+      ...firstPage.iac_assets,
+      ...remainingPagesData.flatMap((page) => page.iac_assets)
+    ];
+
+    logger.info(`Combined all pages: ${allAssets.length} total assets`);
+    logger.info(
+      `Assets breakdown: First page (${firstPage.iac_assets.length}) + Additional pages (${remainingPagesData.flatMap((p) => p.iac_assets).length})`
+    );
+
+    // Check for duplicates
+    const uniqueNames = new Set(allAssets.map((a) => a.name));
+    logger.info(
+      `Unique asset names: ${uniqueNames.size} (duplicates: ${allAssets.length - uniqueNames.size})`
+    );
+
+    logger.info(`=== getAllIacAssets END ===`);
+
+    return {
+      iac_assets: allAssets,
+      paging_info: {
+        full_count: firstPage.paging_info.full_count,
+        requested_page: firstPage.paging_info.requested_page,
+        total_pages: firstPage.paging_info.total_pages
+      }
+    };
   }
 
   /**

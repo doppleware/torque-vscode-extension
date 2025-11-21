@@ -15,10 +15,10 @@
  */
 
 import * as vscode from "vscode";
-import { logger } from "../../../utils/Logger";
 import type { ApiClient } from "../../../api/ApiClient";
-import type { SettingsManager } from "../../setup/SettingsManager";
 import type { IacAsset } from "../../../api/services/types";
+import { logger } from "../../../utils/Logger";
+import type { SettingsManager } from "../../setup/SettingsManager";
 
 /**
  * Cache entry for IAC assets
@@ -29,9 +29,24 @@ interface CacheEntry {
 }
 
 /**
+ * Additional data stored with completion items for lazy resolution
+ */
+interface GrainCompletionData {
+  asset: IacAsset;
+  grainName: string;
+  spaceName: string;
+  isSourceSection: boolean;
+}
+
+/**
  * Provides completion items for grain names in blueprint YAML files
  */
-export class GrainCompletionProvider implements vscode.CompletionItemProvider {
+export class GrainCompletionProvider
+  implements
+    vscode.CompletionItemProvider<
+      vscode.CompletionItem & { grainData?: GrainCompletionData }
+    >
+{
   // Cache of IAC assets per space
   private readonly cache = new Map<string, CacheEntry>();
 
@@ -108,12 +123,12 @@ export class GrainCompletionProvider implements vscode.CompletionItemProvider {
       return cached.assets;
     }
 
-    // Fetch from API
-    logger.info(`Fetching IAC assets from API for space: ${spaceName}`);
+    // Fetch all pages from API
+    logger.info(`Fetching all IAC assets from API for space: ${spaceName}`);
     try {
-      const response = await apiClient.spaces.getIacAssets(spaceName);
+      const response = await apiClient.spaces.getAllIacAssets(spaceName);
       logger.info(
-        `API response received: ${response.iac_assets.length} assets, ${response.paging_info.full_count} total`
+        `API response received: ${response.iac_assets.length} assets across ${response.paging_info.total_pages} page(s), ${response.paging_info.full_count} total`
       );
       const assets = response.iac_assets;
 
@@ -231,109 +246,126 @@ export class GrainCompletionProvider implements vscode.CompletionItemProvider {
       }
 
       // Create completion items for each IAC asset
-      const completionItems = await Promise.all(
-        filteredAssets.map(async (asset) => {
-          // Extract the grain name from the path (last segment)
-          const grainName = asset.path.split("/").pop() ?? asset.path;
+      const completionItems = filteredAssets.map((asset) => {
+        // Extract the grain name from the path (last segment)
+        const grainName = asset.path.split("/").pop() ?? asset.path;
 
-          // Show "grain-name (Type)" in the label
-          const label = `${grainName} (${asset.iac_resource_type})`;
+        // Show "grain-name (Type)" in the label, with emoji for building blocks
+        const isDesignerLibrary = asset.in_designer_library ?? false;
+        const buildingBlockIcon = isDesignerLibrary ? "📦 " : "";
+        const label = `${buildingBlockIcon}${grainName} (${asset.iac_resource_type})`;
 
-          const item = new vscode.CompletionItem(
-            label,
-            vscode.CompletionItemKind.Module
-          );
+        const item = new vscode.CompletionItem(
+          label,
+          vscode.CompletionItemKind.Module
+        );
 
-          // Set the detail (shown on the right side)
-          item.detail = `${asset.repository}/${asset.path}`;
+        // Set the detail (shown on the right side)
+        item.detail = `${asset.repository}/${asset.path}`;
 
-          // Build comprehensive documentation
-          const docParts: string[] = [];
+        // Build comprehensive documentation
+        const docParts: string[] = [];
 
-          docParts.push(`**${asset.name}**`);
+        docParts.push(`**${asset.name}**`);
+        docParts.push("");
+        docParts.push(`Type: ${asset.iac_resource_type}`);
+        if (isDesignerLibrary) {
+          docParts.push(`📦 Building Block`);
+        }
+        docParts.push(`Repository: ${asset.repository}`);
+        docParts.push(`Path: ${asset.path}`);
+
+        if (asset.branch) {
+          docParts.push(`Branch: ${asset.branch}`);
+        }
+
+        if (asset.labels && asset.labels.length > 0) {
           docParts.push("");
-          docParts.push(`Type: ${asset.iac_resource_type}`);
-          docParts.push(`Repository: ${asset.repository}`);
-          docParts.push(`Path: ${asset.path}`);
+          docParts.push(
+            `Labels: ${asset.labels.map((l) => l.name).join(", ")}`
+          );
+        }
 
-          if (asset.branch) {
-            docParts.push(`Branch: ${asset.branch}`);
-          }
+        if (
+          asset.average_hourly_cost !== undefined &&
+          asset.average_hourly_cost > 0
+        ) {
+          docParts.push("");
+          docParts.push(
+            `Average hourly cost: $${asset.average_hourly_cost.toFixed(2)}`
+          );
+        }
 
-          if (asset.labels && asset.labels.length > 0) {
-            docParts.push("");
-            docParts.push(
-              `Labels: ${asset.labels.map((l) => l.name).join(", ")}`
-            );
-          }
+        if (asset.blueprint_count !== undefined) {
+          docParts.push("");
+          docParts.push(`Used in ${asset.blueprint_count} blueprint(s)`);
+        }
 
-          if (
-            asset.average_hourly_cost !== undefined &&
-            asset.average_hourly_cost > 0
-          ) {
-            docParts.push("");
-            docParts.push(
-              `Average hourly cost: $${asset.average_hourly_cost.toFixed(2)}`
-            );
-          }
+        item.documentation = new vscode.MarkdownString(docParts.join("\n"));
 
-          if (asset.blueprint_count !== undefined) {
-            docParts.push("");
-            docParts.push(`Used in ${asset.blueprint_count} blueprint(s)`);
-          }
+        // Insert snippet - different based on context
+        if (sourceContext.inSourceSection) {
+          // In source section, only insert store and path (no catalog fetch needed)
+          const snippetValue = [
+            `store: '${asset.repository}'`,
+            `path: '${asset.path}'`
+          ].join("\n");
+          item.insertText = new vscode.SnippetString(snippetValue);
+        } else {
+          // In grains section, store metadata for command-based insertion
+          const grainData: GrainCompletionData = {
+            asset,
+            grainName,
+            spaceName: effectiveSpace,
+            isSourceSection: false
+          };
 
-          item.documentation = new vscode.MarkdownString(docParts.join("\n"));
+          // Set insertText to empty string to prevent label from being inserted
+          // The command will handle the actual insertion
+          item.insertText = "";
 
-          // Insert snippet - different based on context
-          if (sourceContext.inSourceSection) {
-            // In source section, only insert store and path
-            const snippetValue = [
-              `store: '${asset.repository}'`,
-              `path: '${asset.path}'`
-            ].join("\n");
-            item.insertText = new vscode.SnippetString(snippetValue);
-          } else {
-            // In grains section, insert full grain structure with inputs
-            const snippetValue = await this.createGrainSnippet(
-              asset,
-              grainName,
-              effectiveSpace,
-              apiClient
-            );
-            item.insertText = new vscode.SnippetString(snippetValue);
-          }
+          // Add command to fetch catalog data and insert complete grain structure
+          item.command = {
+            command: "torque.insertGrainWithInputs",
+            title: "Insert grain with inputs",
+            arguments: [grainData]
+          };
+        }
 
-          // Set filter text to the grain name for matching
-          item.filterText = grainName;
+        // Set filter text to the grain name for matching
+        item.filterText = grainName;
 
-          // Set range to replace any partial grain name the user has typed
-          const currentLine = document.lineAt(position.line);
-          const lineText = currentLine.text;
-          const linePrefix = lineText.substring(0, position.character);
-          const matchRegex = /^\s+([a-zA-Z0-9_-]*)$/;
-          const match = matchRegex.exec(linePrefix);
-          if (match) {
-            const startChar = linePrefix.length - match[1].length;
-            item.range = new vscode.Range(
-              position.line,
-              startChar,
-              position.line,
-              position.character
-            );
-          }
+        // Set range to replace any partial grain name the user has typed
+        const currentLine = document.lineAt(position.line);
+        const lineText = currentLine.text;
+        const linePrefix = lineText.substring(0, position.character);
+        const matchRegex = /^\s+([a-zA-Z0-9_-]*)$/;
+        const match = matchRegex.exec(linePrefix);
+        if (match) {
+          const startChar = linePrefix.length - match[1].length;
+          item.range = new vscode.Range(
+            position.line,
+            startChar,
+            position.line,
+            position.character
+          );
+        }
 
-          // Sort by usage (most used first)
-          const usageCount = asset.total_usage_count ?? 0;
-          item.sortText = `${10000 - usageCount}`.padStart(5, "0") + asset.name;
+        // Sort by: building blocks first (in_designer_library), then by usage count
+        const usageCount = asset.total_usage_count ?? 0;
+        // Use 0 for building blocks, 1 for regular assets, then sort by usage within each category
+        const categoryPrefix = isDesignerLibrary ? "0" : "1";
+        item.sortText =
+          `${categoryPrefix}-${10000 - usageCount}`.padStart(7, "0") +
+          asset.name;
 
-          // Add tags for filtering
-          if (asset.in_error) {
-            item.tags = [vscode.CompletionItemTag.Deprecated];
-          }
+        // Add tags for filtering
+        if (asset.in_error) {
+          item.tags = [vscode.CompletionItemTag.Deprecated];
+        }
 
-          return item;
-        })
-      );
+        return item;
+      });
 
       logger.info(`Returning ${completionItems.length} completion items`);
       return completionItems;
@@ -344,98 +376,130 @@ export class GrainCompletionProvider implements vscode.CompletionItemProvider {
   }
 
   /**
-   * Creates a snippet for inserting a grain with its complete structure including inputs
+   * Resolves a completion item to add detailed snippet with actual inputs from catalog
+   * Called when the user selects a specific grain from the completion list
    */
-  private async createGrainSnippet(
-    asset: IacAsset,
-    grainName: string,
-    spaceName: string,
-    apiClient: ApiClient
-  ): Promise<string> {
-    const grainType = asset.iac_resource_type.toLowerCase();
-
-    // Create snippet based on grain type
-    const snippet: string[] = [];
-
-    snippet.push(`${grainName}:`);
-    snippet.push(`  kind: '${grainType}'`);
-    snippet.push(`  spec:`);
-    snippet.push(`    source:`);
-    snippet.push(`      store: '${asset.repository}'`);
-    snippet.push(`      path: '${asset.path}'`);
-
-    // Add agent section (hardcoded for now)
-    snippet.push(`    agent:`);
-    snippet.push(`      name: '\${1:AGENT_NAME}'`);
-
-    // Try to fetch catalog data to get inputs
-    let tabstopIndex = 2;
+  async resolveCompletionItem(
+    item: vscode.CompletionItem & { grainData?: GrainCompletionData }
+  ): Promise<vscode.CompletionItem> {
     try {
-      // Always use 'qtorque' as the repository parameter
-      const repositoryParam = "qtorque";
-
-      logger.info("=== Fetching Catalog Asset Details ===");
-      logger.info(`Space: ${spaceName}`);
-      logger.info(`IAC Asset Name: ${asset.name}`);
-      logger.info(`Repository Parameter: ${repositoryParam}`);
-      logger.info(`Asset Repository: ${asset.repository}`);
+      logger.info(`=== resolveCompletionItem CALLED ===`);
       logger.info(
-        `Asset Repository Type: ${asset.repository_type ?? "not set"}`
+        `Item label: ${typeof item.label === "string" ? item.label : JSON.stringify(item.label)}`
       );
-      logger.info("=======================================");
+      logger.info(`Has grainData: ${!!item.grainData}`);
 
-      const catalogData = await apiClient.spaces.getCatalogAsset(
-        spaceName,
-        asset.name,
-        repositoryParam
+      // Only resolve items that have grain data (items in grains section)
+      if (!item.grainData) {
+        logger.info(`No grainData found, returning item as-is`);
+        return item;
+      }
+
+      const { asset, grainName, spaceName } = item.grainData;
+
+      logger.info(`=== Resolving Completion Item for Grain: ${grainName} ===`);
+      logger.info(`Space: ${spaceName}`);
+      logger.info(`Asset: ${asset.name}`);
+      logger.info(`Repository: ${asset.repository}`);
+
+      // Get the API client
+      const apiClient = this.getApiClient();
+      if (!apiClient) {
+        logger.warn("API client not available for catalog resolution");
+        return item;
+      }
+
+      // Fetch catalog data to get actual inputs
+      // Note: The catalog API requires "qtorque" as the repository name for building blocks
+      const catalogRepositoryName = asset.in_designer_library
+        ? "qtorque"
+        : asset.repository;
+
+      logger.info(
+        `Using repository name: ${catalogRepositoryName} for catalog fetch`
+      );
+      logger.info(
+        `Is building block (in_designer_library): ${asset.in_designer_library ?? false}`
       );
 
-      logger.info("=== Catalog Data Retrieved Successfully ===");
-      logger.info(`Inputs count: ${catalogData.details.inputs?.length ?? 0}`);
-      if (catalogData.details.inputs && catalogData.details.inputs.length > 0) {
+      try {
+        const catalogData = await apiClient.spaces.getCatalogAsset(
+          spaceName,
+          asset.name,
+          catalogRepositoryName
+        );
+
+        logger.info(`Catalog data received for ${grainName}`);
         logger.info(
-          `Input names: ${catalogData.details.inputs.map((i) => i.name).join(", ")}`
-        );
-      }
-      logger.info("===========================================");
-
-      // Add inputs section if there are inputs
-      if (catalogData.details.inputs && catalogData.details.inputs.length > 0) {
-        snippet.push(`    inputs:`);
-
-        // Filter out 'agent' type inputs as they're handled in the agent section
-        const regularInputs = catalogData.details.inputs.filter(
-          (input) => input.type !== "agent"
+          `Inputs count: ${catalogData.details?.inputs?.length ?? 0}`
         );
 
-        regularInputs.forEach((input) => {
-          const defaultValue = input.default_value ?? "";
-          snippet.push(
-            `      - ${input.name}: '\${${tabstopIndex}:${defaultValue}}'`
-          );
-          tabstopIndex++;
-        });
+        // Generate snippet with actual inputs from catalog
+        const snippetLines: string[] = [
+          `${grainName}:`,
+          `  kind: '${asset.iac_resource_type.toLowerCase()}'`,
+          `  spec:`,
+          `    source:`,
+          `      store: '${asset.repository}'`,
+          `      path: '${asset.path}'`
+        ];
+
+        // Add agent section
+        snippetLines.push(`    agent:`);
+        snippetLines.push(`      name: '\${1:AGENT_NAME}'`);
+
+        // Add inputs section with actual catalog inputs
+        if (
+          catalogData.details?.inputs &&
+          catalogData.details.inputs.length > 0
+        ) {
+          snippetLines.push(`    inputs:`);
+
+          let tabStopIndex = 2;
+          catalogData.details.inputs.forEach((input) => {
+            const inputName = input.name;
+            const hasDefault = input.has_default_value;
+            const defaultValue = input.default_value;
+
+            let inputValue: string;
+            if (hasDefault && defaultValue !== null) {
+              // Use default value if available
+              inputValue = defaultValue;
+            } else {
+              // Inputs without defaults get a placeholder
+              inputValue = `\${${tabStopIndex}:${inputName}}`;
+              tabStopIndex++;
+            }
+
+            snippetLines.push(`      - ${inputName}: '${inputValue}'`);
+          });
+        } else {
+          // No inputs from catalog, use placeholder
+          snippetLines.push(`    inputs:`);
+          snippetLines.push(`      - \${2:input_name}: '\${3:value}'`);
+        }
+
+        // Add commands section
+        snippetLines.push(`    commands:`);
+        snippetLines.push(`      - '\${0:dep up ${asset.path}}'`);
+
+        // Update the insert text with the resolved snippet
+        item.insertText = new vscode.SnippetString(snippetLines.join("\n"));
+
+        logger.info(`Successfully resolved completion item for ${grainName}`);
+      } catch (error) {
+        logger.error(
+          `Failed to fetch catalog data for ${grainName}`,
+          error as Error
+        );
+        // Keep the placeholder snippet if catalog fetch fails
       }
 
-      // Add commands section (hardcoded for now, could be made dynamic)
-      snippet.push(`    commands:`);
-      snippet.push(`      - '\${${tabstopIndex}:dep up ${asset.path}}'`);
+      return item;
     } catch (error) {
-      logger.warn(
-        `Failed to fetch catalog data for ${asset.name}, using basic snippet`,
-        error as Error
-      );
-
-      // Fallback to basic structure with placeholders
-      snippet.push(`    inputs:`);
-      snippet.push(`      - \${2:input_name}: '\${3:value}'`);
-      snippet.push(`    commands:`);
-      snippet.push(`      - '\${4:dep up ${asset.path}}'`);
+      logger.error("Error resolving completion item", error as Error);
+      return item;
     }
-
-    snippet.push(`    \${0}`);
-
-    return snippet.join("\n");
   }
 
   /**
@@ -556,6 +620,122 @@ export function registerGrainCompletionProvider(
 ): { disposable: vscode.Disposable; provider: GrainCompletionProvider } {
   const provider = new GrainCompletionProvider(settingsManager, getApiClient);
 
+  // Register command to fetch catalog data and replace placeholder after insertion
+  const commandDisposable = vscode.commands.registerCommand(
+    "torque.insertGrainWithInputs",
+    async (grainData: GrainCompletionData) => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) {
+        return;
+      }
+
+      const apiClient = getApiClient();
+      if (!apiClient) {
+        return;
+      }
+
+      const { asset, grainName, spaceName } = grainData;
+      const catalogRepositoryName = asset.in_designer_library
+        ? "qtorque"
+        : asset.repository;
+
+      logger.info(`=== Command torque.insertGrainWithInputs CALLED ===`);
+      logger.info(`Grain: ${grainName}`);
+      logger.info(`Space: ${spaceName}`);
+      logger.info(`Repository: ${catalogRepositoryName}`);
+
+      try {
+        // Fetch catalog data
+        logger.info(`Fetching catalog data...`);
+        const catalogData = await apiClient.spaces.getCatalogAsset(
+          spaceName,
+          asset.name,
+          catalogRepositoryName
+        );
+
+        logger.info(
+          `Catalog data received: ${catalogData.details?.inputs?.length ?? 0} inputs`
+        );
+
+        // Build the complete grain structure
+        const snippetLines: string[] = [
+          `${grainName}:`,
+          `  kind: '${asset.iac_resource_type.toLowerCase()}'`,
+          `  spec:`,
+          `    source:`,
+          `      store: '${asset.repository}'`,
+          `      path: '${asset.path}'`,
+          `    agent:`,
+          `      name: '\${1:AGENT_NAME}'`,
+          `    inputs:`
+        ];
+
+        // Add inputs from catalog
+        if (
+          catalogData.details?.inputs &&
+          catalogData.details.inputs.length > 0
+        ) {
+          let tabStopIndex = 2;
+          catalogData.details.inputs.forEach((input) => {
+            const inputName = input.name;
+            const hasDefault = input.has_default_value;
+            const defaultValue = input.default_value;
+
+            let inputValue: string;
+            if (hasDefault && defaultValue !== null) {
+              inputValue = defaultValue;
+            } else {
+              inputValue = `\${${tabStopIndex}:${inputName}}`;
+              tabStopIndex++;
+            }
+
+            snippetLines.push(`      - ${inputName}: '${inputValue}'`);
+          });
+        } else {
+          // Fallback if no inputs
+          snippetLines.push(`      - \${2:input_name}: '\${3:value}'`);
+        }
+
+        // Insert the complete snippet at cursor
+        const snippet = new vscode.SnippetString(snippetLines.join("\n"));
+        const success = await editor.insertSnippet(snippet);
+
+        logger.info(`Insert ${success ? "succeeded" : "failed"}`);
+
+        if (success) {
+          logger.info(
+            `Successfully inserted grain with ${catalogData.details?.inputs?.length ?? 0} inputs`
+          );
+        }
+      } catch (error) {
+        logger.error(
+          `Failed to fetch catalog data for ${grainName}`,
+          error as Error
+        );
+
+        // Fallback: insert basic structure without inputs
+        const fallbackSnippet = new vscode.SnippetString(
+          [
+            `${grainName}:`,
+            `  kind: '${asset.iac_resource_type.toLowerCase()}'`,
+            `  spec:`,
+            `    source:`,
+            `      store: '${asset.repository}'`,
+            `      path: '${asset.path}'`,
+            `    agent:`,
+            `      name: '\${1:AGENT_NAME}'`,
+            `    inputs:`,
+            `      - \${2:input_name}: '\${3:value}'`,
+            `    commands:`,
+            `      - '\${0:dep up ${asset.path}}'`
+          ].join("\n")
+        );
+
+        await editor.insertSnippet(fallbackSnippet);
+      }
+    }
+  );
+
   const completionDisposable = vscode.languages.registerCompletionItemProvider(
     { language: "yaml", pattern: "**/*.{yaml,yml}" },
     provider,
@@ -582,10 +762,13 @@ export function registerGrainCompletionProvider(
 
   // Combine disposables
   const disposable = vscode.Disposable.from(
+    commandDisposable,
     completionDisposable,
     openDisposable
   );
 
-  logger.info("Registered grain completion provider with cache refresh");
+  logger.info(
+    "Registered grain completion provider with cache refresh and command"
+  );
   return { disposable, provider };
 }

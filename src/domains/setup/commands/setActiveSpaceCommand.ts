@@ -11,7 +11,6 @@
 
 import * as vscode from "vscode";
 import { logger } from "../../../utils/Logger";
-import { getGitRemoteUrl, isSameRepository } from "../../../utils/git";
 import type { ApiClient } from "../../../api/ApiClient";
 import type { SettingsManager } from "../SettingsManager";
 
@@ -55,78 +54,8 @@ export function registerSetActiveSpaceCommand(
             return;
           }
 
-          // Get current Git repository URL and check which spaces contain it
-          const currentRepoUrl = await getGitRemoteUrl();
-          const spaceHasRepo = new Map<string, boolean>();
-
-          // Check which spaces contain the current repository
-          if (currentRepoUrl) {
-            logger.info(`Current repository URL: ${currentRepoUrl}`);
-            logger.info(`Checking ${allSpaces.length} spaces for repository`);
-
-            const repoCheckResults = await Promise.all(
-              allSpaces.map(async (space) => {
-                try {
-                  logger.info(`Fetching repositories for space: ${space.name}`);
-                  const repositories = await apiClient.spaces.getRepositories(
-                    space.name
-                  );
-                  logger.info(
-                    `Space ${space.name} has ${repositories.length} repositories`
-                  );
-                  repositories.forEach((repo) => {
-                    logger.info(
-                      `  - Repository: ${repo.name}, URL: ${repo.repository_url}`
-                    );
-                  });
-
-                  const hasRepo = repositories.some((repo) => {
-                    if (!repo.repository_url) {
-                      logger.debug(
-                        `Repository ${repo.name} has no repository_url`
-                      );
-                      return false;
-                    }
-                    const matches = isSameRepository(
-                      repo.repository_url,
-                      currentRepoUrl
-                    );
-                    logger.info(
-                      `  Comparing: ${repo.repository_url} vs ${currentRepoUrl} = ${matches}`
-                    );
-                    return matches;
-                  });
-
-                  logger.info(
-                    `Space ${space.name} ${hasRepo ? "CONTAINS" : "does NOT contain"} the repository`
-                  );
-                  return { spaceName: space.name, hasRepo };
-                } catch (error) {
-                  logger.error(
-                    `Failed to get repositories for space ${space.name}`,
-                    error as Error
-                  );
-                  return { spaceName: space.name, hasRepo: false };
-                }
-              })
-            );
-
-            // Build map of which spaces have the repo
-            repoCheckResults.forEach(({ spaceName, hasRepo }) => {
-              spaceHasRepo.set(spaceName, hasRepo);
-            });
-
-            const matchingCount = repoCheckResults.filter(
-              (r) => r.hasRepo
-            ).length;
-            logger.info(
-              `${matchingCount} space(s) contain the current repository`
-            );
-          } else {
-            logger.warn(
-              "No Git repository found, all spaces will be selectable"
-            );
-          }
+          // All spaces are now selectable (no filtering by repository)
+          logger.info(`${allSpaces.length} spaces available for selection`);
 
           // Get current active space and default space
           const currentActiveSpace =
@@ -134,13 +63,10 @@ export function registerSetActiveSpaceCommand(
           const defaultSpace =
             await settingsManager.getSetting<string>("space");
 
-          // Create quick pick items - show all spaces but disable those without the repo
+          // Create quick pick items - all spaces are selectable
           const spaceItems = allSpaces.map((space) => {
             const isActive = space.name === currentActiveSpace;
             const isDefault = space.name === defaultSpace;
-            const hasRepo = currentRepoUrl
-              ? spaceHasRepo.get(space.name) === true
-              : true;
 
             let label = space.name;
             let description = space.description ?? "";
@@ -157,17 +83,10 @@ export function registerSetActiveSpaceCommand(
               description = `${description ? description + " - " : ""}Default Space`;
             }
 
-            // Add repo status for disabled items
-            if (!hasRepo) {
-              description = `${description ? description + " - " : ""}[REPO NOT IN SPACE]`;
-            }
-
             return {
               label,
               description,
-              spaceName: space.name,
-              // Disable items that don't have the repo (unless no repo was detected)
-              disabled: !hasRepo
+              spaceName: space.name
             };
           });
 
@@ -177,43 +96,25 @@ export function registerSetActiveSpaceCommand(
             description: defaultSpace
               ? `Clear active space and use default: ${defaultSpace}`
               : "Clear active space setting",
-            spaceName: null as string | null,
-            disabled: false
+            spaceName: null as string | null
           };
 
           const allItems = [clearOption, ...spaceItems];
 
-          // Show space selection with custom filter to prevent selecting disabled items
-          const selected = await vscode.window.showQuickPick(
-            allItems.map((item) => ({
-              ...item,
-              // Use X icon for disabled items to distinguish from "Use Default Space"
-              label: item.disabled ? `$(x) ${item.label}` : item.label,
-              // Mark as picked: false to visually distinguish
-              picked: false
-            })),
-            {
-              placeHolder: currentActiveSpace
-                ? `Current active space: ${currentActiveSpace}`
-                : defaultSpace
-                  ? `Active space: ${defaultSpace} (Default)`
-                  : "Select active Torque space for this workspace",
-              title: "Set Active Torque Space",
-              // Enable matching on description to help find spaces
-              matchOnDescription: true
-            }
-          );
+          // Show space selection
+          const selected = await vscode.window.showQuickPick(allItems, {
+            placeHolder: currentActiveSpace
+              ? `Current active space: ${currentActiveSpace}`
+              : defaultSpace
+                ? `Active space: ${defaultSpace} (Default)`
+                : "Select active Torque space for this workspace",
+            title: "Set Active Torque Space",
+            // Enable matching on description to help find spaces
+            matchOnDescription: true
+          });
 
           if (selected === undefined) {
             return; // User cancelled
-          }
-
-          // Prevent selecting disabled items
-          if (selected.disabled) {
-            vscode.window.showWarningMessage(
-              `Cannot select "${selected.spaceName}" - repository not found in this space.`
-            );
-            return;
           }
 
           // Update active space
