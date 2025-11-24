@@ -413,18 +413,38 @@ export async function activate(context: vscode.ExtensionContext) {
     settingsManager,
     () => apiClient
   );
-  const codeLensDisposable = vscode.languages.registerCodeLensProvider(
-    { language: "yaml", scheme: "file" },
-    blueprintCodeLensProvider
+  // Support both local files and remote repos (GitHub, vscode-vfs, etc.)
+  const codeLensDisposable = vscode.Disposable.from(
+    vscode.languages.registerCodeLensProvider(
+      { language: "yaml", scheme: "file" },
+      blueprintCodeLensProvider
+    ),
+    vscode.languages.registerCodeLensProvider(
+      { language: "yaml", scheme: "vscode-vfs" },
+      blueprintCodeLensProvider
+    ),
+    vscode.languages.registerCodeLensProvider(
+      { language: "yaml", scheme: "untitled" },
+      blueprintCodeLensProvider
+    )
   );
 
   // Register Grain Script CodeLens Provider
   const grainScriptCodeLensProvider = new GrainScriptCodeLensProvider();
-  const grainScriptCodeLensDisposable =
+  const grainScriptCodeLensDisposable = vscode.Disposable.from(
     vscode.languages.registerCodeLensProvider(
       { language: "yaml", scheme: "file" },
       grainScriptCodeLensProvider
-    );
+    ),
+    vscode.languages.registerCodeLensProvider(
+      { language: "yaml", scheme: "vscode-vfs" },
+      grainScriptCodeLensProvider
+    ),
+    vscode.languages.registerCodeLensProvider(
+      { language: "yaml", scheme: "untitled" },
+      grainScriptCodeLensProvider
+    )
+  );
 
   // Register Grain Completion Provider
   const grainCompletion = registerGrainCompletionProvider(
