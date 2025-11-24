@@ -543,9 +543,12 @@ const attachEnvironmentFileToChatContextInternal = async (
 ## Instructions for AI
 
 The environment "${environmentId}" is the current environment in scope.
-To answer any questions by the user you can first use the **torque_get_environment_details** tool 
-to get a list of all infrastructure resources in the environment and available automation workflows.
-Use this information in conjunction with MCP and other tools to help the user accomplish their goals.
+To answer any questions by the user you can first use the **torque_get_environment_details** tool.
+For any questions the user has about specific infrastructure or applications please run this tool first 
+to get the complete environment context which includes:
+1. A list of all infrastructure resources in the environment (answering questions like "what's the name of the Admin service S3 resource")
+2. Available automation workflows: Actions that can be used to fulfill user requests on the environment.
+Use this information in conjunction with the Torque MCP server and other MCP servers and tools to help the user accomplish their goals.
 `;
 
   // Write instruction content to file
