@@ -3,6 +3,7 @@
  */
 
 import * as vscode from "vscode";
+import * as path from "path";
 import type { ApiClient } from "../../../../api/ApiClient";
 import type { SettingsManager } from "../../../setup/SettingsManager";
 
@@ -58,7 +59,7 @@ export abstract class BaseBlueprintAction {
    * Get the blueprint name from the file URI
    */
   protected getBlueprintName(uri: vscode.Uri): string {
-    const fileName = uri.fsPath.split("/").pop() ?? "blueprint.yaml";
+    const fileName = path.basename(uri.fsPath);
     return fileName.replace(/\.ya?ml$/i, "");
   }
 }

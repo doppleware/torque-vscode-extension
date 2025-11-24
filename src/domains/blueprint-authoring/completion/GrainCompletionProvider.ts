@@ -41,12 +41,7 @@ interface GrainCompletionData {
 /**
  * Provides completion items for grain names in blueprint YAML files
  */
-export class GrainCompletionProvider
-  implements
-    vscode.CompletionItemProvider<
-      vscode.CompletionItem & { grainData?: GrainCompletionData }
-    >
-{
+export class GrainCompletionProvider implements vscode.CompletionItemProvider {
   // Cache of IAC assets per space
   private readonly cache = new Map<string, CacheEntry>();
 
@@ -376,130 +371,83 @@ export class GrainCompletionProvider
   }
 
   /**
-   * Resolves a completion item to add detailed snippet with actual inputs from catalog
-   * Called when the user selects a specific grain from the completion list
+   * Gets the YAML path from root to the current position based on indentation
    */
-  async resolveCompletionItem(
-    item: vscode.CompletionItem & { grainData?: GrainCompletionData }
-  ): Promise<vscode.CompletionItem> {
-    try {
-      logger.info(`=== resolveCompletionItem CALLED ===`);
-      logger.info(
-        `Item label: ${typeof item.label === "string" ? item.label : JSON.stringify(item.label)}`
-      );
-      logger.info(`Has grainData: ${!!item.grainData}`);
+  private getYamlPath(
+    document: vscode.TextDocument,
+    position: vscode.Position
+  ): string[] {
+    const path: { key: string; indent: number }[] = [];
+    const currentLine = document.lineAt(position.line).text;
+    const currentLinePrefix = currentLine.substring(0, position.character);
 
-      // Only resolve items that have grain data (items in grains section)
-      if (!item.grainData) {
-        logger.info(`No grainData found, returning item as-is`);
-        return item;
-      }
+    // Determine the indentation level we're looking for parents of
+    // If we're typing at position.character, use the actual spaces before cursor
+    let currentLineIndent = this.getIndentLevel(currentLinePrefix);
 
-      const { asset, grainName, spaceName } = item.grainData;
-
-      logger.info(`=== Resolving Completion Item for Grain: ${grainName} ===`);
-      logger.info(`Space: ${spaceName}`);
-      logger.info(`Asset: ${asset.name}`);
-      logger.info(`Repository: ${asset.repository}`);
-
-      // Get the API client
-      const apiClient = this.getApiClient();
-      if (!apiClient) {
-        logger.warn("API client not available for catalog resolution");
-        return item;
-      }
-
-      // Fetch catalog data to get actual inputs
-      // Note: The catalog API requires "qtorque" as the repository name for building blocks
-      const catalogRepositoryName = asset.in_designer_library
-        ? "qtorque"
-        : asset.repository;
-
-      logger.info(
-        `Using repository name: ${catalogRepositoryName} for catalog fetch`
-      );
-      logger.info(
-        `Is building block (in_designer_library): ${asset.in_designer_library ?? false}`
-      );
-
-      try {
-        const catalogData = await apiClient.spaces.getCatalogAsset(
-          spaceName,
-          asset.name,
-          catalogRepositoryName
-        );
-
-        logger.info(`Catalog data received for ${grainName}`);
-        logger.info(
-          `Inputs count: ${catalogData.details?.inputs?.length ?? 0}`
-        );
-
-        // Generate snippet with actual inputs from catalog
-        const snippetLines: string[] = [
-          `${grainName}:`,
-          `  kind: '${asset.iac_resource_type.toLowerCase()}'`,
-          `  spec:`,
-          `    source:`,
-          `      store: '${asset.repository}'`,
-          `      path: '${asset.path}'`
-        ];
-
-        // Add agent section
-        snippetLines.push(`    agent:`);
-        snippetLines.push(`      name: '\${1:AGENT_NAME}'`);
-
-        // Add inputs section with actual catalog inputs
-        if (
-          catalogData.details?.inputs &&
-          catalogData.details.inputs.length > 0
-        ) {
-          snippetLines.push(`    inputs:`);
-
-          let tabStopIndex = 2;
-          catalogData.details.inputs.forEach((input) => {
-            const inputName = input.name;
-            const hasDefault = input.has_default_value;
-            const defaultValue = input.default_value;
-
-            let inputValue: string;
-            if (hasDefault && defaultValue !== null) {
-              // Use default value if available
-              inputValue = defaultValue;
-            } else {
-              // Inputs without defaults get a placeholder
-              inputValue = `\${${tabStopIndex}:${inputName}}`;
-              tabStopIndex++;
-            }
-
-            snippetLines.push(`      - ${inputName}: '${inputValue}'`);
-          });
-        } else {
-          // No inputs from catalog, use placeholder
-          snippetLines.push(`    inputs:`);
-          snippetLines.push(`      - \${2:input_name}: '\${3:value}'`);
-        }
-
-        // Add commands section
-        snippetLines.push(`    commands:`);
-        snippetLines.push(`      - '\${0:dep up ${asset.path}}'`);
-
-        // Update the insert text with the resolved snippet
-        item.insertText = new vscode.SnippetString(snippetLines.join("\n"));
-
-        logger.info(`Successfully resolved completion item for ${grainName}`);
-      } catch (error) {
-        logger.error(
-          `Failed to fetch catalog data for ${grainName}`,
-          error as Error
-        );
-        // Keep the placeholder snippet if catalog fetch fails
-      }
-
-      return item;
-    } catch (error) {
-      logger.error("Error resolving completion item", error as Error);
-      return item;
+    // Special case: if the line is empty or only whitespace, and we have some indentation,
+    // use that indentation to find parents
+    if (currentLinePrefix.trim() === "" && currentLineIndent === 0) {
+      // Completely empty line with cursor at position 0
+      // Look at indentation of non-empty lines around us
+      currentLineIndent = 0;
     }
+
+    logger.info(
+      `getYamlPath: currentLineIndent = ${currentLineIndent}, position = ${position.line}:${position.character}`
+    );
+
+    // We're looking for the most recent key that has less indentation than us
+    let targetIndent = currentLineIndent;
+
+    // Scan backwards from cursor position to build the path
+    for (let lineNum = position.line - 1; lineNum >= 0; lineNum--) {
+      const line = document.lineAt(lineNum).text;
+      const trimmed = line.trim();
+
+      // Skip empty lines and comments
+      if (trimmed === "" || trimmed.startsWith("#")) {
+        continue;
+      }
+
+      const indent = this.getIndentLevel(line);
+
+      // Only consider lines that are less indented than what we're looking for
+      // (these are parent elements in the hierarchy)
+      if (indent < targetIndent) {
+        // Extract the key name (everything before the colon)
+        // Allow spaces, hyphens, underscores, alphanumeric in key names
+        const keyMatch = /^(\s*)([^:]+?):\s*$/.exec(line);
+        if (keyMatch) {
+          const key = keyMatch[2].trim();
+
+          // Add this parent to the path
+          path.push({ key, indent });
+
+          // Now we need to find the parent of this element
+          // Look for keys with even less indentation
+          targetIndent = indent;
+
+          // If we've reached indent 0, we're done (found root element)
+          if (indent === 0) {
+            break;
+          }
+        }
+      }
+    }
+
+    // Reverse to get root-to-cursor path
+    const result = path.reverse().map((p) => p.key);
+    logger.info(`getYamlPath result: [${result.join(", ")}]`);
+    return result;
+  }
+
+  /**
+   * Gets the indentation level (number of spaces) for a line
+   */
+  private getIndentLevel(line: string): number {
+    const match = /^(\s*)/.exec(line);
+    return match ? match[1].length : 0;
   }
 
   /**
@@ -510,46 +458,53 @@ export class GrainCompletionProvider
     document: vscode.TextDocument,
     position: vscode.Position
   ): { inSourceSection: boolean; expectedKind?: string } {
-    // Get text from start to current position
-    const textBeforeCursor = document.getText(
-      new vscode.Range(new vscode.Position(0, 0), position)
-    );
+    const path = this.getYamlPath(document, position);
 
-    // Look for the current grain definition by finding the most recent grain name
-    // Pattern: lines with indentation followed by a name and colon (grain name)
-    const grainMatches = [
-      ...textBeforeCursor.matchAll(/^ {2}([a-zA-Z0-9_-]+):\s*$/gm)
-    ];
+    logger.info(`YAML path: ${path.join(" > ")}`);
 
-    if (grainMatches.length === 0) {
-      return { inSourceSection: false };
+    // Check if we're in grains > {grain-name} > spec > source
+    // Path should be: ["grains", "{grain-name}", "spec", "source"]
+    if (
+      path.length >= 4 &&
+      path[0] === "grains" &&
+      path[2] === "spec" &&
+      path[3] === "source"
+    ) {
+      // Look for the kind field in the current grain to determine expected type
+      const grainName = path[1];
+      let expectedKind: string | undefined;
+
+      // Scan backwards to find the kind field within this grain
+      for (let lineNum = position.line - 1; lineNum >= 0; lineNum--) {
+        const line = document.lineAt(lineNum).text;
+
+        // Stop if we've gone back to a different grain or out of grains section
+        if (/^ {2}[a-zA-Z0-9_-]+:\s*$/.test(line)) {
+          const grainMatch = /^ {2}([a-zA-Z0-9_-]+):\s*$/.exec(line);
+          if (grainMatch && grainMatch[1] !== grainName) {
+            break; // Different grain, stop searching
+          }
+        }
+
+        // Look for kind field
+        const kindMatch = /^\s*kind:\s*['"]?(\w+)['"]?/i.exec(line);
+        if (kindMatch) {
+          expectedKind = kindMatch[1];
+          break;
+        }
+      }
+
+      logger.info(
+        `Found source section context, expected kind: ${expectedKind ?? "not specified"}`
+      );
+
+      return {
+        inSourceSection: true,
+        expectedKind
+      };
     }
 
-    // Get the last grain definition
-    const lastGrainMatch = grainMatches[grainMatches.length - 1];
-    const grainStartIndex = lastGrainMatch.index ?? 0;
-
-    // Get text from the last grain definition to cursor
-    const grainText = textBeforeCursor.substring(grainStartIndex);
-
-    // Check if we're in the source section
-    const sourceMatch = /\n\s+spec:\s*\n\s+source:\s*$/m.test(grainText);
-    if (!sourceMatch) {
-      return { inSourceSection: false };
-    }
-
-    // Look for the kind field to determine expected type
-    const kindMatch = /kind:\s*['"]?(\w+)['"]?/i.exec(grainText);
-    const expectedKind = kindMatch ? kindMatch[1] : undefined;
-
-    logger.info(
-      `Found source section context, expected kind: ${expectedKind ?? "not specified"}`
-    );
-
-    return {
-      inSourceSection: true,
-      expectedKind
-    };
+    return { inSourceSection: false };
   }
 
   /**
@@ -570,44 +525,78 @@ export class GrainCompletionProvider
   }
 
   /**
-   * Checks if the current position is within the grains section
+   * Checks if the current position is within the grains section at the correct indent level
+   * for defining a grain name (direct child of grains)
    */
   private isInGrainsSection(
     document: vscode.TextDocument,
     position: vscode.Position
   ): boolean {
-    // Get text from start to current position
-    const textBeforeCursor = document.getText(
-      new vscode.Range(new vscode.Position(0, 0), position)
-    );
-
-    // Check if we're after a "grains:" line
-    const grainsMatch = /^grains:\s*$/m.test(textBeforeCursor);
-    logger.info(`Found 'grains:' section: ${grainsMatch}`);
-    if (!grainsMatch) {
-      return false;
-    }
-
-    // Get the line at the current position
     const currentLine = document.lineAt(position.line).text;
     const currentLinePrefix = currentLine.substring(0, position.character);
 
     logger.info(`Current line: "${currentLine}"`);
     logger.info(`Line prefix: "${currentLinePrefix}"`);
 
-    // Check if we're at the start of a grain name (2+ spaces indent, no colon yet)
+    // Check if we're typing a grain name (no colon yet on current line)
     // We want to trigger when:
-    // 1. User is on an empty line with indentation: "  "
+    // 1. User is on an empty line with 2 spaces: "  "
     // 2. User is typing the grain name: "  hello-w"
     // We DON'T want to trigger if there's already a colon (grain already defined)
-    const isGrainNamePosition = /^\s{2,}[a-zA-Z0-9_-]*$/.test(
-      currentLinePrefix
-    );
-    logger.info(
-      `Is grain name position (2+ spaces, no colon): ${isGrainNamePosition}`
-    );
+    const isGrainNamePosition = /^\s{2}[a-zA-Z0-9_-]*$/.test(currentLinePrefix);
 
-    return isGrainNamePosition;
+    if (!isGrainNamePosition) {
+      logger.info(`Not at grain name position (need 2 spaces, no colon)`);
+      return false;
+    }
+
+    // Now verify we're actually under the grains section by checking the YAML hierarchy
+    // We need to find what section this indentation level belongs to
+    const path = this.getYamlPath(document, position);
+
+    logger.info(`YAML path: ${path.join(" > ")}`);
+
+    // Check if we're directly under grains section
+    // Path should be ["grains"] when we're at indent 2 under grains
+    if (path.length === 1 && path[0] === "grains") {
+      logger.info(`Confirmed: inside grains section at correct level`);
+      return true;
+    }
+
+    // Edge case: if path is empty but we can see grains: above us at indent 0
+    if (path.length === 0) {
+      // Scan backwards to see if we're right after grains:
+      for (let lineNum = position.line - 1; lineNum >= 0; lineNum--) {
+        const line = document.lineAt(lineNum).text;
+        const trimmed = line.trim();
+
+        // Skip empty lines
+        if (trimmed === "") {
+          continue;
+        }
+
+        const indent = this.getIndentLevel(line);
+
+        // If we find a line at indent 0, check if it's grains:
+        if (indent === 0) {
+          if (trimmed === "grains:") {
+            logger.info(`Found grains: at indent 0 above current position`);
+            return true;
+          }
+          // Found different section at indent 0, we're not in grains
+          break;
+        }
+
+        // If we find a line at indent 2 (same level as us), check if it's a grain
+        if (indent === 2) {
+          // This is a sibling at our level - keep searching for parent
+          continue;
+        }
+      }
+    }
+
+    logger.info(`Not in grains section at correct level`);
+    return false;
   }
 }
 
@@ -635,9 +624,7 @@ export function registerGrainCompletionProvider(
       }
 
       const { asset, grainName, spaceName } = grainData;
-      const catalogRepositoryName = asset.in_designer_library
-        ? "qtorque"
-        : asset.repository;
+      const catalogRepositoryName = "qtorque";
 
       logger.info(`=== Command torque.insertGrainWithInputs CALLED ===`);
       logger.info(`Grain: ${grainName}`);
