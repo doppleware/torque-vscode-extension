@@ -246,7 +246,7 @@
     "rimraf": "^6.1.2",
     "sinon": "^21.0.1",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.50.0"
+    "typescript-eslint": "^8.50.1"
   },
   "dependencies": {
     "axios": "^1.13.2",
