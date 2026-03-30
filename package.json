@@ -254,6 +254,6 @@
     "express": "^5.2.1",
     "husky": "^9.1.7",
     "js-yaml": "^4.1.1",
-    "path-to-regexp": "^8.3.0"
+    "path-to-regexp": "^8.4.0"
   }
 }
