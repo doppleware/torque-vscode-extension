@@ -234,7 +234,7 @@
     "@vscode/vsce": "^3.9.2",
     "audit-ci": "^7.1.0",
     "esbuild": "^0.28.1",
-    "eslint": "^9.39.4",
+    "eslint": "^9.39.5",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.7.0",
     "jiti": "^2.7.0",
