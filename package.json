@@ -44,6 +44,18 @@
           "description": "Default Torque space to use for operations",
           "scope": "resource"
         },
+        "torque-ai.chatAgents": {
+          "type": "array",
+          "default": [],
+          "description": "AI chats configured to use the Torque MCP server",
+          "scope": "application"
+        },
+        "torque-ai.primaryChatAgent": {
+          "type": "string",
+          "default": "",
+          "description": "AI chat opened when adding environment context from Torque",
+          "scope": "application"
+        },
         "torque-ai.activeSpace": {
           "type": "string",
           "default": null,
@@ -58,6 +70,12 @@
         "title": "Configure Torque AI",
         "category": "Torque",
         "icon": "$(gear)"
+      },
+      {
+        "command": "torque.configureAgents",
+        "title": "Add Torque MCP to AI Chats",
+        "category": "Torque",
+        "icon": "$(plug)"
       },
       {
         "command": "torque.setActiveSpace",
@@ -228,7 +246,7 @@
     "@types/mocha": "^10.0.10",
     "@types/proxyquire": "^1.3.31",
     "@types/sinon": "^21.0.1",
-    "@types/vscode": "^1.134.0",
+    "@types/vscode": "~1.106.0",
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^3.9.2",

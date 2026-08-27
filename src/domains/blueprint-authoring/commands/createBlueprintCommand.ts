@@ -17,8 +17,7 @@ import { logger } from "../../../utils/Logger";
  * @returns Disposable for command registration
  */
 export function registerCreateBlueprintCommand():
-  | vscode.Disposable
-  | undefined {
+  vscode.Disposable | undefined {
   try {
     const command = vscode.commands.registerCommand(
       "torque.createBlueprint",

@@ -176,7 +176,9 @@ export const registerMcpServer = (
     const errorMessage = error instanceof Error ? error.message : String(error);
     // eslint-disable-next-line no-console
     console.error(`[Torque MCP] Validation failed: ${errorMessage}`);
-    throw new Error(`Invalid MCP server configuration: ${errorMessage}`);
+    throw new Error(`Invalid MCP server configuration: ${errorMessage}`, {
+      cause: error
+    });
   }
 
   // Perform initial health check

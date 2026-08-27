@@ -8,6 +8,7 @@ import {
   isExtensionConfigured,
   showSetupNotificationIfNeeded,
   registerSetupCommand,
+  registerConfigureAgentsCommand,
   registerSetActiveSpaceCommand,
   registerSetDefaultSpaceCommand,
   registerResetFirstTimeCommand
@@ -328,9 +329,8 @@ export async function activate(context: vscode.ExtensionContext) {
   if (vscode.lm && typeof vscode.lm.registerTool === "function") {
     try {
       // Register environment details tool
-      const { TorqueEnvironmentDetailsTool } = await import(
-        "./domains/environment-context/tools/TorqueEnvironmentDetailsTool"
-      );
+      const { TorqueEnvironmentDetailsTool } =
+        await import("./domains/environment-context/tools/TorqueEnvironmentDetailsTool");
       const environmentTool = vscode.lm.registerTool(
         "torque_get_environment_details",
         new TorqueEnvironmentDetailsTool()
@@ -341,9 +341,8 @@ export async function activate(context: vscode.ExtensionContext) {
       );
 
       // Register current space tool
-      const { TorqueCurrentSpaceTool } = await import(
-        "./domains/setup/tools/TorqueCurrentSpaceTool"
-      );
+      const { TorqueCurrentSpaceTool } =
+        await import("./domains/setup/tools/TorqueCurrentSpaceTool");
       const currentSpaceTool = vscode.lm.registerTool(
         "get_current_torque_space",
         new TorqueCurrentSpaceTool(settingsManager)
@@ -743,6 +742,9 @@ export async function activate(context: vscode.ExtensionContext) {
   // Register setup command
   const setupCommand = registerSetupCommand(settingsManager, initializeClient);
 
+  const configureAgentsCommand =
+    registerConfigureAgentsCommand(settingsManager);
+
   // Register set active space command
   const setActiveSpaceCommand = registerSetActiveSpaceCommand(
     settingsManager,
@@ -805,6 +807,8 @@ export async function activate(context: vscode.ExtensionContext) {
   const addGrainScriptCommand = registerAddGrainScriptCommand();
 
   context.subscriptions.push(configChangeListener);
+  context.subscriptions.push(configureAgentsCommand);
+
   if (setupCommand) {
     context.subscriptions.push(setupCommand);
   }

@@ -22,7 +22,11 @@ import path from "path";
 import vscode from "vscode";
 import type { ApiClient } from "../../../api/ApiClient";
 import { getClient } from "../../../extension";
-import { getIdeCommand } from "../../../ides/ideCommands";
+import {
+  AGENT_CHAT_COMMANDS,
+  getFirstAvailableCommand,
+  resolveAgent
+} from "../../../ides/agentChatCommands";
 import { logger } from "../../../utils/Logger";
 import { TorqueEnvironmentDetailsTool } from "../tools/TorqueEnvironmentDetailsTool";
 import {
@@ -528,10 +532,33 @@ const attachEnvironmentFileToChatContextInternal = async (
 
   // Create a simple instruction file with environment ID
   // The AI will use the torque_get_environment_details tool to fetch full details on demand
-  const tempDir = os.tmpdir();
+  const torqueConfiguration = vscode.workspace.getConfiguration("torque-ai");
+  const configuredAgents =
+    torqueConfiguration.get<string[]>("chatAgents") ?? [];
+  const primaryAgentSetting =
+    torqueConfiguration.get<string>("primaryChatAgent");
+  const primaryAgent =
+    primaryAgentSetting && primaryAgentSetting.length > 0
+      ? primaryAgentSetting
+      : undefined;
+  const agent = await resolveAgent(primaryAgent, configuredAgents);
+  const chatCommands = agent ? AGENT_CHAT_COMMANDS[agent] : undefined;
+  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+  const useWorkspaceContextDir = Boolean(
+    chatCommands?.requiresWorkspaceFile && workspaceFolder
+  );
+  const contextDir =
+    useWorkspaceContextDir && workspaceFolder
+      ? path.join(workspaceFolder.uri.fsPath, ".torque")
+      : os.tmpdir();
   const sanitizedName = environmentName.replace(/[^a-zA-Z0-9-_]/g, "_");
   const fileName = `${sanitizedName}.md`;
-  const filePath = path.join(tempDir, fileName);
+  const filePath = path.join(contextDir, fileName);
+
+  const environmentDetailsToolName =
+    agent === "copilot"
+      ? "**torque_get_environment_details**"
+      : "**get_environment_details**";
 
   // Create instruction content that tells the AI to use the tool
   const instructionContent = `# Torque Environment Context
@@ -543,7 +570,7 @@ const attachEnvironmentFileToChatContextInternal = async (
 ## Instructions for AI
 
 The environment "${environmentId}" is the current environment in scope.
-To answer any questions by the user you can first use the **torque_get_environment_details** tool.
+To answer any questions by the user you can first use the ${environmentDetailsToolName} tool.
 For any questions the user has about specific infrastructure or applications please run this tool first 
 to get the complete environment context which includes:
 1. A list of all infrastructure resources in the environment (answering questions like "what's the name of the Admin service S3 resource")
@@ -552,20 +579,55 @@ Use this information in conjunction with the Torque MCP server and other MCP ser
 `;
 
   // Write instruction content to file
+  fs.mkdirSync(contextDir, { recursive: true });
+
+  if (useWorkspaceContextDir) {
+    fs.writeFileSync(path.join(contextDir, ".gitignore"), "*\n", "utf8");
+  }
+
   fs.writeFileSync(filePath, instructionContent, "utf8");
 
   progress?.report({ increment: 5 });
 
   // Open chat and attach file
   progress?.report({ message: "Attaching to chat...", increment: 0 });
-  const openChatCommand = getIdeCommand("OPEN_CHAT");
-  await vscode.commands.executeCommand(openChatCommand);
+  logger.info(`Resolved chat agent: ${agent ?? "none"}`);
 
-  const attachFileToChatCommand = getIdeCommand("ATTACH_FILE_TO_CHAT");
-  await vscode.commands.executeCommand(
-    attachFileToChatCommand,
-    vscode.Uri.file(filePath)
-  );
+  const openChatCommand = chatCommands
+    ? await getFirstAvailableCommand(chatCommands.openChat)
+    : undefined;
+
+  if (openChatCommand) {
+    await vscode.commands.executeCommand(openChatCommand);
+  }
+
+  const attachFileCommand = chatCommands
+    ? await getFirstAvailableCommand(chatCommands.attachFile)
+    : undefined;
+
+  if (attachFileCommand && chatCommands?.attachViaActiveEditor) {
+    const document = await vscode.workspace.openTextDocument(
+      vscode.Uri.file(filePath)
+    );
+    await vscode.window.showTextDocument(document, { preview: false });
+    await vscode.commands.executeCommand(attachFileCommand);
+  } else if (attachFileCommand) {
+    await vscode.commands.executeCommand(
+      attachFileCommand,
+      vscode.Uri.file(filePath)
+    );
+  } else {
+    await vscode.env.clipboard.writeText(
+      `Debug Torque environment ${environmentId} in space ${spaceName}. Context file: ${filePath}`
+    );
+    const document = await vscode.workspace.openTextDocument(
+      vscode.Uri.file(filePath)
+    );
+    await vscode.window.showTextDocument(document, { preview: false });
+    vscode.window.showInformationMessage(
+      "No supported AI chat was detected. The environment context was copied to your clipboard."
+    );
+  }
 
   progress?.report({ increment: 5 });
 
@@ -604,10 +666,12 @@ export const attachEnvironmentFileToChatContext = async (
           progress
         );
       } catch (error: unknown) {
-        // eslint-disable-next-line no-console
-        console.error(
-          "Error attaching environment file to chat context:",
-          error
+        logger.error(
+          `Error attaching environment file to chat context: ${
+            error instanceof Error
+              ? (error.stack ?? error.message)
+              : String(error)
+          }`
         );
 
         const errorMessage =

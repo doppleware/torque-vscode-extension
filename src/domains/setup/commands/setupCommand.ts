@@ -11,6 +11,7 @@
 import * as vscode from "vscode";
 import { logger } from "../../../utils/Logger";
 import { ApiClient } from "../../../api/ApiClient";
+import { promptAndConfigureAgents } from "../../mcp/configureAgents";
 import type { SettingsManager } from "../SettingsManager";
 
 type InitializeClientFn = (
@@ -120,11 +121,32 @@ export function registerSetupCommand(
             await settingsManager.setSetting("space", selectedSpace);
           }
 
+          const configuredAgents = await promptAndConfigureAgents(url, token);
+          if (configuredAgents) {
+            await settingsManager.setSetting(
+              "chatAgents",
+              configuredAgents.agents,
+              vscode.ConfigurationTarget.Global
+            );
+            await settingsManager.setSetting(
+              "primaryChatAgent",
+              configuredAgents.primaryAgent ?? "",
+              vscode.ConfigurationTarget.Global
+            );
+          }
+
           // Initialize client and register MCP server with success message and user error messages
           await initializeClient(settingsManager, true, true, true);
         } catch (error) {
           const errorMessage =
             error instanceof Error ? error.message : String(error);
+          logger.error(
+            `Setup failed: ${
+              error instanceof Error
+                ? (error.stack ?? error.message)
+                : String(error)
+            }`
+          );
           vscode.window.showErrorMessage(`Setup failed: ${errorMessage}`);
         }
       }

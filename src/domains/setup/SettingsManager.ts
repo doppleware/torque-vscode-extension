@@ -30,7 +30,9 @@ export class SettingsManager {
     { key: "url", secret: true },
     { key: "token", secret: true },
     { key: "space", secret: false },
-    { key: "activeSpace", secret: false }
+    { key: "activeSpace", secret: false },
+    { key: "chatAgents", secret: false },
+    { key: "primaryChatAgent", secret: false }
   ];
 
   private context: vscode.ExtensionContext;

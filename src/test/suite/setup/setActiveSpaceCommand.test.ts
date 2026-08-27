@@ -45,7 +45,7 @@ suite("Set Active Space Command Test Suite", () => {
           const storage = (testContext as any)._secretStorage || {};
           return Object.keys(storage);
         },
-        onDidChange: () => ({ dispose: () => {} }) as vscode.Disposable
+        onDidChange: () => ({ dispose: () => {} })
       },
       subscriptions: [],
       workspaceState: {
@@ -76,7 +76,7 @@ suite("Set Active Space Command Test Suite", () => {
           name: "torque-ai"
         }
       } as any
-    } as vscode.ExtensionContext;
+    };
 
     settingsManager = new SettingsManager(testContext);
 

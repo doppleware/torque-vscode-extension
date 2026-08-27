@@ -50,7 +50,7 @@ suite("MCP and Tool Registration - Setup Command Integration", () => {
           const storage = (testContext as any)._secretStorage || {};
           return Object.keys(storage);
         },
-        onDidChange: () => ({ dispose: () => {} }) as vscode.Disposable
+        onDidChange: () => ({ dispose: () => {} })
       },
       subscriptions: [],
       workspaceState: {
@@ -81,7 +81,7 @@ suite("MCP and Tool Registration - Setup Command Integration", () => {
           name: "torque"
         }
       } as any
-    } as vscode.ExtensionContext;
+    };
 
     settingsManager = new SettingsManager(testContext);
 
@@ -116,8 +116,7 @@ suite("MCP and Tool Registration - Setup Command Integration", () => {
       // Arrange
       let urlPromptCalled = false;
       let urlValidationFunction:
-        | vscode.InputBoxOptions["validateInput"]
-        | undefined;
+        vscode.InputBoxOptions["validateInput"] | undefined;
 
       (vscode.window as any).showInputBox = async (
         options: vscode.InputBoxOptions
@@ -137,7 +136,13 @@ suite("MCP and Tool Registration - Setup Command Integration", () => {
         return "test-token-1234567890"; // Mock token response
       };
 
-      (vscode.window as any).showQuickPick = async () => {
+      (vscode.window as any).showQuickPick = async (
+        _items?: any,
+        quickPickOptions?: any
+      ) => {
+        if (quickPickOptions?.canPickMany) {
+          return undefined;
+        }
         return undefined; // Mock space selection (no spaces or skipped)
       };
 
@@ -171,8 +176,7 @@ suite("MCP and Tool Registration - Setup Command Integration", () => {
       // Arrange
       let tokenPromptCalled = false;
       let tokenValidationFunction:
-        | vscode.InputBoxOptions["validateInput"]
-        | undefined;
+        vscode.InputBoxOptions["validateInput"] | undefined;
 
       (vscode.window as any).showInputBox = async (
         options: vscode.InputBoxOptions
@@ -197,7 +201,13 @@ suite("MCP and Tool Registration - Setup Command Integration", () => {
         return "https://api.example.com"; // Mock URL response
       };
 
-      (vscode.window as any).showQuickPick = async () => {
+      (vscode.window as any).showQuickPick = async (
+        _items?: any,
+        quickPickOptions?: any
+      ) => {
+        if (quickPickOptions?.canPickMany) {
+          return undefined;
+        }
         return undefined; // Mock space selection (no spaces or skipped)
       };
 
@@ -243,7 +253,13 @@ suite("MCP and Tool Registration - Setup Command Integration", () => {
         return undefined;
       };
 
-      (vscode.window as any).showQuickPick = async () => {
+      (vscode.window as any).showQuickPick = async (
+        _items?: any,
+        quickPickOptions?: any
+      ) => {
+        if (quickPickOptions?.canPickMany) {
+          return undefined;
+        }
         // This should not be called if API fails
         assert.fail("Space selection should not be shown when API fails");
       };
@@ -284,7 +300,13 @@ suite("MCP and Tool Registration - Setup Command Integration", () => {
         return undefined;
       };
 
-      (vscode.window as any).showQuickPick = async () => {
+      (vscode.window as any).showQuickPick = async (
+        _items?: any,
+        quickPickOptions?: any
+      ) => {
+        if (quickPickOptions?.canPickMany) {
+          return undefined;
+        }
         return undefined; // Mock space selection (no spaces or skipped)
       };
 
@@ -351,7 +373,13 @@ suite("MCP and Tool Registration - Setup Command Integration", () => {
         return undefined;
       };
 
-      (vscode.window as any).showQuickPick = async () => {
+      (vscode.window as any).showQuickPick = async (
+        _items?: any,
+        quickPickOptions?: any
+      ) => {
+        if (quickPickOptions?.canPickMany) {
+          return undefined;
+        }
         return undefined; // Mock space selection
       };
 
@@ -407,7 +435,13 @@ suite("MCP and Tool Registration - Setup Command Integration", () => {
         return undefined;
       };
 
-      (vscode.window as any).showQuickPick = async () => {
+      (vscode.window as any).showQuickPick = async (
+        _items?: any,
+        quickPickOptions?: any
+      ) => {
+        if (quickPickOptions?.canPickMany) {
+          return undefined;
+        }
         return undefined; // Mock space selection
       };
 
@@ -481,7 +515,13 @@ suite("MCP and Tool Registration - Setup Command Integration", () => {
         return undefined;
       };
 
-      (vscode.window as any).showQuickPick = async () => {
+      (vscode.window as any).showQuickPick = async (
+        _items?: any,
+        quickPickOptions?: any
+      ) => {
+        if (quickPickOptions?.canPickMany) {
+          return undefined;
+        }
         return undefined; // Mock space selection
       };
 
@@ -568,7 +608,13 @@ suite("MCP and Tool Registration - Setup Command Integration", () => {
         return undefined;
       };
 
-      (vscode.window as any).showQuickPick = async () => {
+      (vscode.window as any).showQuickPick = async (
+        _items?: any,
+        quickPickOptions?: any
+      ) => {
+        if (quickPickOptions?.canPickMany) {
+          return undefined;
+        }
         return undefined; // Mock space selection
       };
 
@@ -725,7 +771,13 @@ suite("MCP and Tool Registration - Setup Command Integration", () => {
         return undefined;
       };
 
-      (vscode.window as any).showQuickPick = async () => {
+      (vscode.window as any).showQuickPick = async (
+        _items?: any,
+        quickPickOptions?: any
+      ) => {
+        if (quickPickOptions?.canPickMany) {
+          return undefined;
+        }
         return undefined; // Mock space selection
       };
 

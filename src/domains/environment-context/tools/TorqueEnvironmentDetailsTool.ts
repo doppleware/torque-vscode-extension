@@ -102,9 +102,7 @@ interface EnvironmentDetails {
   grain_resources?: GrainWithResources[];
 }
 
-export class TorqueEnvironmentDetailsTool
-  implements vscode.LanguageModelTool<EnvironmentDetailsParameters>
-{
+export class TorqueEnvironmentDetailsTool implements vscode.LanguageModelTool<EnvironmentDetailsParameters> {
   private client?: ApiClient;
 
   constructor(client?: ApiClient) {
@@ -136,12 +134,10 @@ export class TorqueEnvironmentDetailsTool
 
     try {
       // Import the utilities we need
-      const { EnvironmentDetailsTransformer } = await import(
-        "../transformers/EnvironmentDetailsTransformer"
-      );
-      const { getComprehensiveEnvironmentDetails } = await import(
-        "../handlers/environmentContextHandler"
-      );
+      const { EnvironmentDetailsTransformer } =
+        await import("../transformers/EnvironmentDetailsTransformer");
+      const { getComprehensiveEnvironmentDetails } =
+        await import("../handlers/environmentContextHandler");
 
       // Fetch comprehensive environment details (with grains, resources, workflows)
       const simplifiedDetails = await getComprehensiveEnvironmentDetails(
@@ -200,7 +196,8 @@ export class TorqueEnvironmentDetailsTool
       return response.data;
     } catch (error) {
       throw new Error(
-        `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
+        `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        { cause: error }
       );
     }
   }

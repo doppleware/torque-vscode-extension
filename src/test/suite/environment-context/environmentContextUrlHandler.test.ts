@@ -184,9 +184,8 @@ suite("Environment Context URL Handler Integration Tests", () => {
       const environmentId = "prod-env-456";
 
       // Import the handler
-      const { attachEnvironmentFileToChatContext } = await import(
-        "../../../domains/environment-context/handlers/environmentContextHandler"
-      );
+      const { attachEnvironmentFileToChatContext } =
+        await import("../../../domains/environment-context/handlers/environmentContextHandler");
 
       // Mock VS Code commands
       const executedCommands: { command: string; args: any[] }[] = [];
@@ -314,9 +313,8 @@ suite("Environment Context URL Handler Integration Tests", () => {
       const spaceName = "empty-space";
       const environmentId = "empty-env";
 
-      const { attachEnvironmentFileToChatContext } = await import(
-        "../../../domains/environment-context/handlers/environmentContextHandler"
-      );
+      const { attachEnvironmentFileToChatContext } =
+        await import("../../../domains/environment-context/handlers/environmentContextHandler");
 
       // Mock VS Code commands
       const executedCommands: string[] = [];
