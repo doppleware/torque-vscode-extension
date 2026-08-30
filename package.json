@@ -73,7 +73,7 @@
       },
       {
         "command": "torque.configureAgents",
-        "title": "Add Torque MCP to AI Chats",
+        "title": "Choose AI Chats",
         "category": "Torque",
         "icon": "$(plug)"
       },

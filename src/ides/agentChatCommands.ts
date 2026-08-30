@@ -4,27 +4,23 @@ export interface AgentChatCommands {
   openChat: string[];
   attachFile: string[];
   attachViaActiveEditor: boolean;
-  requiresWorkspaceFile: boolean;
 }
 
 export const AGENT_CHAT_COMMANDS: Record<string, AgentChatCommands> = {
   copilot: {
     openChat: ["workbench.action.chat.open"],
     attachFile: ["workbench.action.chat.attachFile"],
-    attachViaActiveEditor: false,
-    requiresWorkspaceFile: false
+    attachViaActiveEditor: false
   },
   kiro: {
     openChat: ["kiroAgent.startNewChatSession", "kiroAgent.focusChatInput"],
     attachFile: ["kiroAgent.selectFilesAsContext"],
-    attachViaActiveEditor: false,
-    requiresWorkspaceFile: true
+    attachViaActiveEditor: false
   },
   cursor: {
     openChat: ["composer.startComposerPrompt"],
     attachFile: ["composer.addfilestocomposer"],
-    attachViaActiveEditor: false,
-    requiresWorkspaceFile: false
+    attachViaActiveEditor: false
   },
   "claude-code": {
     openChat: ["claude-vscode.sidebar.open", "claude-vscode.newConversation"],
@@ -32,8 +28,7 @@ export const AGENT_CHAT_COMMANDS: Record<string, AgentChatCommands> = {
       "claude-vscode.insertAtMention",
       "claude-code.insertAtMentioned"
     ],
-    attachViaActiveEditor: true,
-    requiresWorkspaceFile: true
+    attachViaActiveEditor: true
   }
 };
 

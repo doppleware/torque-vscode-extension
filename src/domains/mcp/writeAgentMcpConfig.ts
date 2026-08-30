@@ -22,10 +22,21 @@ export const writeAgentMcpConfig = (
   }
 
   const servers = (config[target.rootKey] ?? {}) as Record<string, unknown>;
+  const serverUrl = `${url.replace(/\/+$/, "")}/mcp`;
 
-  servers[MCP_SERVER_NAME] = {
+  const existingEntry = Object.entries(servers).find(
+    ([, entry]) =>
+      typeof entry === "object" &&
+      entry !== null &&
+      (entry as { url?: string }).url === serverUrl
+  );
+
+  const serverName = existingEntry ? existingEntry[0] : MCP_SERVER_NAME;
+
+  servers[serverName] = {
+    ...(existingEntry?.[1] as Record<string, unknown> | undefined),
     type: "http",
-    url: `${url.replace(/\/+$/, "")}/mcp`,
+    url: serverUrl,
     headers: {
       Authorization: `Bearer ${token}`
     }

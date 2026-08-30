@@ -543,14 +543,7 @@ const attachEnvironmentFileToChatContextInternal = async (
       : undefined;
   const agent = await resolveAgent(primaryAgent, configuredAgents);
   const chatCommands = agent ? AGENT_CHAT_COMMANDS[agent] : undefined;
-  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-  const useWorkspaceContextDir = Boolean(
-    chatCommands?.requiresWorkspaceFile && workspaceFolder
-  );
-  const contextDir =
-    useWorkspaceContextDir && workspaceFolder
-      ? path.join(workspaceFolder.uri.fsPath, ".torque")
-      : os.tmpdir();
+  const contextDir = os.tmpdir();
   const sanitizedName = environmentName.replace(/[^a-zA-Z0-9-_]/g, "_");
   const fileName = `${sanitizedName}.md`;
   const filePath = path.join(contextDir, fileName);
@@ -579,12 +572,6 @@ Use this information in conjunction with the Torque MCP server and other MCP ser
 `;
 
   // Write instruction content to file
-  fs.mkdirSync(contextDir, { recursive: true });
-
-  if (useWorkspaceContextDir) {
-    fs.writeFileSync(path.join(contextDir, ".gitignore"), "*\n", "utf8");
-  }
-
   fs.writeFileSync(filePath, instructionContent, "utf8");
 
   progress?.report({ increment: 5 });
@@ -617,16 +604,24 @@ Use this information in conjunction with the Torque MCP server and other MCP ser
       vscode.Uri.file(filePath)
     );
   } else {
-    await vscode.env.clipboard.writeText(
-      `Debug Torque environment ${environmentId} in space ${spaceName}. Context file: ${filePath}`
-    );
     const document = await vscode.workspace.openTextDocument(
       vscode.Uri.file(filePath)
     );
     await vscode.window.showTextDocument(document, { preview: false });
-    vscode.window.showInformationMessage(
-      "No supported AI chat was detected. The environment context was copied to your clipboard."
-    );
+
+    const copyPromptAction = "Copy prompt";
+    void vscode.window
+      .showInformationMessage(
+        "No supported AI chat was detected. The environment context file has been opened.",
+        copyPromptAction
+      )
+      .then((selection) => {
+        if (selection === copyPromptAction) {
+          void vscode.env.clipboard.writeText(
+            `Debug Torque environment ${environmentId} in space ${spaceName}. Context file: ${filePath}`
+          );
+        }
+      });
   }
 
   progress?.report({ increment: 5 });

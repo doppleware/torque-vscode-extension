@@ -35,6 +35,7 @@ suite("Agent MCP Config Writer Test Suite", () => {
     type?: string;
     url?: string;
     headers?: Record<string, string>;
+    autoApprove?: string[];
   }
 
   const readConfig = (filePath: string): McpConfigFile =>
@@ -133,6 +134,59 @@ suite("Agent MCP Config Writer Test Suite", () => {
       config.mcpServers?.torque.headers?.Authorization,
       "Bearer new-token-123456"
     );
+  });
+
+  test("Should reuse an existing entry pointing at the same server", () => {
+    const target = createTarget("mcpServers");
+    const filePath = target.getFilePath();
+    fs.writeFileSync(
+      filePath,
+      JSON.stringify({
+        mcpServers: {
+          "stack-automation": {
+            type: "http",
+            url: "http://localhost/mcp",
+            headers: { Authorization: "Bearer old-token-123456" }
+          }
+        }
+      }),
+      "utf8"
+    );
+
+    writeAgentMcpConfig(target, "http://localhost", "new-token-123456");
+
+    const config = readConfig(filePath);
+    assert.strictEqual(Object.keys(config.mcpServers ?? {}).length, 1);
+    assert.strictEqual(
+      config.mcpServers?.["stack-automation"].headers?.Authorization,
+      "Bearer new-token-123456"
+    );
+    assert.strictEqual(config.mcpServers?.torque, undefined);
+  });
+
+  test("Should keep extra settings on the entry it reuses", () => {
+    const target = createTarget("mcpServers");
+    const filePath = target.getFilePath();
+    fs.writeFileSync(
+      filePath,
+      JSON.stringify({
+        mcpServers: {
+          torque: {
+            type: "http",
+            url: "http://localhost/mcp",
+            autoApprove: ["get_spaces"]
+          }
+        }
+      }),
+      "utf8"
+    );
+
+    writeAgentMcpConfig(target, "http://localhost", "token-1234567890");
+
+    const config = readConfig(filePath);
+    assert.deepStrictEqual(config.mcpServers?.torque.autoApprove, [
+      "get_spaces"
+    ]);
   });
 
   test("Should not double the slash when the url has a trailing slash", () => {
