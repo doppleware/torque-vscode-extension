@@ -14,6 +14,7 @@ import {
   registerResetFirstTimeCommand
 } from "./domains/setup";
 import { handleEnvironmentContextUrl } from "./domains/environment-context";
+import { getConfigurationKey, initializeBranding } from "./branding";
 import { openWebviewWithUrl } from "./uris/handlers/webview";
 import { UriRouter } from "./uris/UriRouter";
 import { logger } from "./utils/Logger";
@@ -308,6 +309,8 @@ export async function activate(context: vscode.ExtensionContext) {
   isActivated = true;
   logger.info("Torque AI extension activating");
 
+  initializeBranding(context);
+
   const uriRouter = new UriRouter();
 
   const settingsManager = new SettingsManager(context);
@@ -457,8 +460,8 @@ export async function activate(context: vscode.ExtensionContext) {
     (e) => {
       // Refresh CodeLens when active space or default space changes
       if (
-        e.affectsConfiguration("torque-ai.activeSpace") ||
-        e.affectsConfiguration("torque-ai.space")
+        e.affectsConfiguration(getConfigurationKey("activeSpace")) ||
+        e.affectsConfiguration(getConfigurationKey("space"))
       ) {
         blueprintCodeLensProvider.refresh();
       }
@@ -904,6 +907,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
   app.get("/api/torque/about", (_, res) => {
     res.json({
+      extensionId: context.extension.id,
+      extensionVersion: (context.extension.packageJSON as { version?: string })
+        .version,
       ideName: vscode.env.appName,
       ideUriScheme: vscode.env.uriScheme,
       ideVersion: vscode.version,
@@ -913,6 +919,10 @@ export async function activate(context: vscode.ExtensionContext) {
 
   const server = app.listen(port, () => {
     logger.info(`Express server started on port ${port}`);
+  });
+
+  server.on("error", (error: Error) => {
+    logger.error(`Express server error on port ${port}: ${error.message}`);
   });
 
   context.subscriptions.push({

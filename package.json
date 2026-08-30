@@ -155,7 +155,11 @@
     "languageModelTools": [
       {
         "name": "torque_get_environment_details",
-        "tags": ["torque", "environment", "infrastructure"],
+        "tags": [
+          "torque",
+          "environment",
+          "infrastructure"
+        ],
         "toolReferenceName": "torque_get_environment_details",
         "displayName": "Get Torque Environment Details",
         "modelDescription": "Retrieve detailed information about a specific Torque environment including owner, cost, connections, grains, resources, and available workflows",
@@ -182,7 +186,11 @@
       },
       {
         "name": "get_current_torque_space",
-        "tags": ["torque", "space", "configuration"],
+        "tags": [
+          "torque",
+          "space",
+          "configuration"
+        ],
         "toolReferenceName": "get_current_torque_space",
         "displayName": "Get Current Torque Space",
         "modelDescription": "Get the name of the currently active Torque space. Returns the active space if set, otherwise returns the default space",
@@ -232,12 +240,6 @@
     "*.{json,md,ts}": [
       "prettier --write"
     ]
-  },
-  "__metadata": {
-    "id": "2e214876-5bea-4ee6-8026-222de5313d92",
-    "publisherDisplayName": "Quali",
-    "publisherId": "caa21fe0-eb8b-43fd-9197-ae8fb8b1b5df",
-    "isPreReleaseVersion": false
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

@@ -1,8 +1,7 @@
 import fs from "fs";
 import path from "path";
+import { MCP_SERVER_NAME } from "../../branding";
 import type { AgentMcpTarget } from "../../ides/mcpConfigTargets";
-
-const MCP_SERVER_NAME = "torque";
 
 export const writeAgentMcpConfig = (
   target: AgentMcpTarget,

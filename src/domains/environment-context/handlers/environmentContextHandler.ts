@@ -21,6 +21,7 @@ import os from "os";
 import path from "path";
 import vscode from "vscode";
 import type { ApiClient } from "../../../api/ApiClient";
+import { getConfigurationSection } from "../../../branding";
 import { getClient } from "../../../extension";
 import {
   AGENT_CHAT_COMMANDS,
@@ -532,7 +533,9 @@ const attachEnvironmentFileToChatContextInternal = async (
 
   // Create a simple instruction file with environment ID
   // The AI will use the torque_get_environment_details tool to fetch full details on demand
-  const torqueConfiguration = vscode.workspace.getConfiguration("torque-ai");
+  const torqueConfiguration = vscode.workspace.getConfiguration(
+    getConfigurationSection()
+  );
   const configuredAgents =
     torqueConfiguration.get<string[]>("chatAgents") ?? [];
   const primaryAgentSetting =

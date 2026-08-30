@@ -15,8 +15,7 @@
 
 import vscode from "vscode";
 
-const MCP_SERVER_LABEL = "torque";
-const MCP_SERVER_PROVIDER_ID = "torqueMcpProvider";
+import { MCP_SERVER_LABEL, MCP_SERVER_PROVIDER_ID } from "../../branding";
 
 /**
  * Creates a secure MCP server URI with proper authentication headers
