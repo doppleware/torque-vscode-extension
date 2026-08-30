@@ -16,13 +16,17 @@ suite("Agent MCP Config Writer Test Suite", () => {
 
   const createTarget = (
     rootKey: string,
-    fileName = "mcp.json"
+    fileName = "mcp.json",
+    format: "json" | "toml" = "json"
   ): AgentMcpTarget => ({
     id: "test-agent",
     label: "Test Agent",
     description: "Test",
     rootKey,
-    getFilePath: () => path.join(tempDir, fileName)
+    format,
+    getFilePath: () => path.join(tempDir, fileName),
+    isAvailable: () => true,
+    isHostBound: false
   });
 
   interface McpConfigFile {
@@ -200,6 +204,91 @@ suite("Agent MCP Config Writer Test Suite", () => {
 
     const config = readConfig(filePath);
     assert.strictEqual(config.mcpServers?.torque.url, "http://localhost/mcp");
+  });
+
+  test("Should write a TOML block for Codex style configs", () => {
+    const target = createTarget("mcp_servers", "config.toml", "toml");
+
+    const filePath = writeAgentMcpConfig(
+      target,
+      "http://localhost",
+      "token-1234567890"
+    );
+
+    const content = fs.readFileSync(filePath, "utf8");
+    assert.ok(content.includes("[mcp_servers.torque]"));
+    assert.ok(content.includes('url = "http://localhost/mcp"'));
+    assert.ok(content.includes("[mcp_servers.torque.http_headers]"));
+    assert.ok(content.includes('Authorization = "Bearer token-1234567890"'));
+  });
+
+  test("Should preserve unrelated TOML settings and other servers", () => {
+    const target = createTarget("mcp_servers", "config.toml", "toml");
+    fs.writeFileSync(
+      target.getFilePath(),
+      [
+        'model = "o3"',
+        "",
+        "[mcp_servers.other]",
+        'url = "https://example.com/mcp"',
+        ""
+      ].join("\n"),
+      "utf8"
+    );
+
+    const filePath = writeAgentMcpConfig(
+      target,
+      "http://localhost",
+      "token-1234567890"
+    );
+
+    const content = fs.readFileSync(filePath, "utf8");
+    assert.ok(content.includes('model = "o3"'));
+    assert.ok(content.includes("[mcp_servers.other]"));
+    assert.ok(content.includes("[mcp_servers.torque]"));
+  });
+
+  test("Should replace the TOML block instead of duplicating it", () => {
+    const target = createTarget("mcp_servers", "config.toml", "toml");
+
+    writeAgentMcpConfig(target, "http://localhost", "old-token-123456");
+    const filePath = writeAgentMcpConfig(
+      target,
+      "http://localhost",
+      "new-token-123456"
+    );
+
+    const content = fs.readFileSync(filePath, "utf8");
+    assert.strictEqual(
+      content.split("[mcp_servers.torque]").length - 1,
+      1,
+      "should contain exactly one torque server block"
+    );
+    assert.ok(content.includes("Bearer new-token-123456"));
+    assert.ok(!content.includes("old-token-123456"));
+  });
+
+  test("Should reuse an existing TOML entry pointing at the same server", () => {
+    const target = createTarget("mcp_servers", "config.toml", "toml");
+    fs.writeFileSync(
+      target.getFilePath(),
+      [
+        "[mcp_servers.stack-automation]",
+        'url = "http://localhost/mcp"',
+        ""
+      ].join("\n"),
+      "utf8"
+    );
+
+    const filePath = writeAgentMcpConfig(
+      target,
+      "http://localhost",
+      "token-1234567890"
+    );
+
+    const content = fs.readFileSync(filePath, "utf8");
+    assert.ok(content.includes("[mcp_servers.stack-automation]"));
+    assert.ok(!content.includes("[mcp_servers.torque]"));
   });
 
   test("Should create missing parent directories", () => {

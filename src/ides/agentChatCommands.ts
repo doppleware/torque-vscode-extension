@@ -22,6 +22,11 @@ export const AGENT_CHAT_COMMANDS: Record<string, AgentChatCommands> = {
     attachFile: ["composer.addfilestocomposer"],
     attachViaActiveEditor: false
   },
+  codex: {
+    openChat: ["chatgpt.openSidebar", "chatgpt.newCodexPanel"],
+    attachFile: ["chatgpt.addFileToThread"],
+    attachViaActiveEditor: false
+  },
   "claude-code": {
     openChat: ["claude-vscode.sidebar.open", "claude-vscode.newConversation"],
     attachFile: [

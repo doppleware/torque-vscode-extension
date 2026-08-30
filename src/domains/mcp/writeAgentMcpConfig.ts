@@ -1,7 +1,10 @@
 import fs from "fs";
 import path from "path";
 import { MCP_SERVER_NAME } from "../../branding";
+import { buildTomlMcpConfig } from "./writeTomlMcpConfig";
 import type { AgentMcpTarget } from "../../ides/mcpConfigTargets";
+
+const serverUrlOf = (url: string): string => `${url.replace(/\/+$/, "")}/mcp`;
 
 export const writeAgentMcpConfig = (
   target: AgentMcpTarget,
@@ -10,6 +13,26 @@ export const writeAgentMcpConfig = (
 ): string => {
   const filePath = target.getFilePath();
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
+
+  if (target.format === "toml") {
+    const existing = fs.existsSync(filePath)
+      ? fs.readFileSync(filePath, "utf8")
+      : "";
+
+    fs.writeFileSync(
+      filePath,
+      buildTomlMcpConfig(
+        existing,
+        target.rootKey,
+        MCP_SERVER_NAME,
+        serverUrlOf(url),
+        token
+      ),
+      "utf8"
+    );
+
+    return filePath;
+  }
 
   let config: Record<string, unknown> = {};
 
@@ -21,7 +44,7 @@ export const writeAgentMcpConfig = (
   }
 
   const servers = (config[target.rootKey] ?? {}) as Record<string, unknown>;
-  const serverUrl = `${url.replace(/\/+$/, "")}/mcp`;
+  const serverUrl = serverUrlOf(url);
 
   const existingEntry = Object.entries(servers).find(
     ([, entry]) =>

@@ -13,10 +13,22 @@ export const promptAndConfigureAgents = async (
   token: string,
   preselected: string[] = []
 ): Promise<ConfiguredAgents | undefined> => {
-  const items = AGENT_MCP_TARGETS.map((target) => ({
+  const usable = AGENT_MCP_TARGETS.filter(
+    (target) => !target.isHostBound || target.isAvailable()
+  );
+
+  const available = usable.filter((target) => target.isAvailable());
+  const unavailable = usable.filter((target) => !target.isAvailable());
+
+  const items = [...available, ...unavailable].map((target) => ({
     label: target.label,
-    description: target.description,
-    picked: preselected.includes(target.id),
+    description: target.isAvailable()
+      ? target.description
+      : `${target.description} (not detected here)`,
+    picked:
+      preselected.length > 0
+        ? preselected.includes(target.id)
+        : target.isAvailable(),
     target
   }));
 

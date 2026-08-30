@@ -118,7 +118,11 @@ export function registerSetupCommand(
           await settingsManager.setSetting("url", url);
           await settingsManager.setSetting("token", token);
           if (selectedSpace) {
-            await settingsManager.setSetting("space", selectedSpace);
+            await settingsManager.setSetting(
+              "space",
+              selectedSpace,
+              vscode.ConfigurationTarget.Global
+            );
           }
 
           const configuredAgents = await promptAndConfigureAgents(url, token);
