@@ -54,9 +54,9 @@ suite("Git Utilities Test Suite", () => {
     });
 
     test("Should extract repo name from URL without .git", () => {
-      const url = "https://github.com/doppleware/digma-vscode-plugin";
+      const url = "https://github.com/user/my-plugin";
       const repoName = getRepositoryNameFromUrl(url);
-      assert.strictEqual(repoName, "digma-vscode-plugin");
+      assert.strictEqual(repoName, "my-plugin");
     });
 
     test("Should handle URLs with trailing slashes", () => {

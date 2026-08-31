@@ -1,7 +1,7 @@
 # Torque AI
 
-[![Release](https://img.shields.io/github/v/release/doppleware/torque-vscode-extension)](https://github.com/doppleware/torque-vscode-extension/releases)
-[![Tests](https://github.com/doppleware/torque-vscode-extension/actions/workflows/ci.yml/badge.svg)](https://github.com/doppleware/torque-vscode-extension/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/QualiTorque/torque-vscode-extension)](https://github.com/QualiTorque/torque-vscode-extension/releases)
+[![Tests](https://github.com/QualiTorque/torque-vscode-extension/actions/workflows/ci.yml/badge.svg)](https://github.com/QualiTorque/torque-vscode-extension/actions/workflows/ci.yml)
 
 The Torque platform provides self-service automation and governance of IaC assets for a variety of use cases. The Torque VS Code extension helps in the authoring of Torque blueprints and grains, operation and troubleshooting of environments.
 
