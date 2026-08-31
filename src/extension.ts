@@ -8,11 +8,13 @@ import {
   isExtensionConfigured,
   showSetupNotificationIfNeeded,
   registerSetupCommand,
+  registerConfigureAgentsCommand,
   registerSetActiveSpaceCommand,
   registerSetDefaultSpaceCommand,
   registerResetFirstTimeCommand
 } from "./domains/setup";
 import { handleEnvironmentContextUrl } from "./domains/environment-context";
+import { getConfigurationKey, initializeBranding } from "./branding";
 import { openWebviewWithUrl } from "./uris/handlers/webview";
 import { UriRouter } from "./uris/UriRouter";
 import { logger } from "./utils/Logger";
@@ -307,6 +309,8 @@ export async function activate(context: vscode.ExtensionContext) {
   isActivated = true;
   logger.info("Torque AI extension activating");
 
+  initializeBranding(context);
+
   const uriRouter = new UriRouter();
 
   const settingsManager = new SettingsManager(context);
@@ -328,9 +332,8 @@ export async function activate(context: vscode.ExtensionContext) {
   if (vscode.lm && typeof vscode.lm.registerTool === "function") {
     try {
       // Register environment details tool
-      const { TorqueEnvironmentDetailsTool } = await import(
-        "./domains/environment-context/tools/TorqueEnvironmentDetailsTool"
-      );
+      const { TorqueEnvironmentDetailsTool } =
+        await import("./domains/environment-context/tools/TorqueEnvironmentDetailsTool");
       const environmentTool = vscode.lm.registerTool(
         "torque_get_environment_details",
         new TorqueEnvironmentDetailsTool()
@@ -341,9 +344,8 @@ export async function activate(context: vscode.ExtensionContext) {
       );
 
       // Register current space tool
-      const { TorqueCurrentSpaceTool } = await import(
-        "./domains/setup/tools/TorqueCurrentSpaceTool"
-      );
+      const { TorqueCurrentSpaceTool } =
+        await import("./domains/setup/tools/TorqueCurrentSpaceTool");
       const currentSpaceTool = vscode.lm.registerTool(
         "get_current_torque_space",
         new TorqueCurrentSpaceTool(settingsManager)
@@ -458,8 +460,8 @@ export async function activate(context: vscode.ExtensionContext) {
     (e) => {
       // Refresh CodeLens when active space or default space changes
       if (
-        e.affectsConfiguration("torque-ai.activeSpace") ||
-        e.affectsConfiguration("torque-ai.space")
+        e.affectsConfiguration(getConfigurationKey("activeSpace")) ||
+        e.affectsConfiguration(getConfigurationKey("space"))
       ) {
         blueprintCodeLensProvider.refresh();
       }
@@ -743,6 +745,9 @@ export async function activate(context: vscode.ExtensionContext) {
   // Register setup command
   const setupCommand = registerSetupCommand(settingsManager, initializeClient);
 
+  const configureAgentsCommand =
+    registerConfigureAgentsCommand(settingsManager);
+
   // Register set active space command
   const setActiveSpaceCommand = registerSetActiveSpaceCommand(
     settingsManager,
@@ -805,6 +810,8 @@ export async function activate(context: vscode.ExtensionContext) {
   const addGrainScriptCommand = registerAddGrainScriptCommand();
 
   context.subscriptions.push(configChangeListener);
+  context.subscriptions.push(configureAgentsCommand);
+
   if (setupCommand) {
     context.subscriptions.push(setupCommand);
   }
@@ -900,6 +907,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
   app.get("/api/torque/about", (_, res) => {
     res.json({
+      extensionId: context.extension.id,
+      extensionVersion: (context.extension.packageJSON as { version?: string })
+        .version,
       ideName: vscode.env.appName,
       ideUriScheme: vscode.env.uriScheme,
       ideVersion: vscode.version,
@@ -909,6 +919,10 @@ export async function activate(context: vscode.ExtensionContext) {
 
   const server = app.listen(port, () => {
     logger.info(`Express server started on port ${port}`);
+  });
+
+  server.on("error", (error: Error) => {
+    logger.error(`Express server error on port ${port}: ${error.message}`);
   });
 
   context.subscriptions.push({

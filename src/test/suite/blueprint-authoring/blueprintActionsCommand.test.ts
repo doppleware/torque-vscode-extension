@@ -65,7 +65,7 @@ grains:
           const storage = (testContext as any)._secretStorage || {};
           return Object.keys(storage);
         },
-        onDidChange: () => ({ dispose: () => {} }) as vscode.Disposable
+        onDidChange: () => ({ dispose: () => {} })
       },
       subscriptions: [],
       workspaceState: {
@@ -107,7 +107,7 @@ grains:
           name: "torque-ai"
         }
       } as any
-    } as vscode.ExtensionContext;
+    };
 
     settingsManager = new SettingsManager(testContext);
   });

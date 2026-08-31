@@ -124,7 +124,7 @@ suite("URI Handler Integration Test Suite", () => {
       "vscode://wrong.extension/chat/context/add/environment/test-space/test-env"
     );
 
-    let handled = false;
+    let handled: boolean;
 
     try {
       await vscode.env.openExternal(wrongUri);

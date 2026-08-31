@@ -26,7 +26,7 @@ suite("MCP and Tool Registration - Extension Activation", () => {
         store: async () => {},
         delete: async () => {},
         keys: async () => [],
-        onDidChange: () => ({ dispose: () => {} }) as vscode.Disposable
+        onDidChange: () => ({ dispose: () => {} })
       },
       subscriptions: [],
       workspaceState: {
@@ -53,7 +53,7 @@ suite("MCP and Tool Registration - Extension Activation", () => {
       asAbsolutePath: (relativePath: string) => `/mock/path/${relativePath}`,
       languageModelAccessInformation: {} as any,
       extension: {} as any
-    } as vscode.ExtensionContext;
+    };
   });
 
   suiteTeardown(() => {
@@ -226,7 +226,7 @@ suite("MCP and Tool Registration - Extension Activation", () => {
           },
           store: async () => {},
           delete: async () => {},
-          onDidChange: () => ({ dispose: () => {} }) as vscode.Disposable
+          onDidChange: () => ({ dispose: () => {} })
         }
       };
 

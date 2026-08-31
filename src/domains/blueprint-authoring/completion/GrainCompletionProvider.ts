@@ -17,6 +17,7 @@
 import * as vscode from "vscode";
 import type { ApiClient } from "../../../api/ApiClient";
 import type { IacAsset } from "../../../api/services/types";
+import { getConfigurationKey } from "../../../branding";
 import { logger } from "../../../utils/Logger";
 import type { SettingsManager } from "../../setup/SettingsManager";
 
@@ -55,8 +56,8 @@ export class GrainCompletionProvider implements vscode.CompletionItemProvider {
     // Clear cache when space configuration changes
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (
-        event.affectsConfiguration("torque-ai.space") ||
-        event.affectsConfiguration("torque-ai.activeSpace")
+        event.affectsConfiguration(getConfigurationKey("space")) ||
+        event.affectsConfiguration(getConfigurationKey("activeSpace"))
       ) {
         logger.debug("Space configuration changed, clearing grain cache");
         this.clearCache();

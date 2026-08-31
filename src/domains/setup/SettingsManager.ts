@@ -16,7 +16,7 @@
  */
 
 import vscode from "vscode";
-import type { PackageJSON } from "../../types";
+import { getConfigurationSection } from "../../branding";
 
 export interface SettingDefinition {
   key: string;
@@ -30,7 +30,9 @@ export class SettingsManager {
     { key: "url", secret: true },
     { key: "token", secret: true },
     { key: "space", secret: false },
-    { key: "activeSpace", secret: false }
+    { key: "activeSpace", secret: false },
+    { key: "chatAgents", secret: false },
+    { key: "primaryChatAgent", secret: false }
   ];
 
   private context: vscode.ExtensionContext;
@@ -45,7 +47,7 @@ export class SettingsManager {
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
-    this.extensionName = (context.extension.packageJSON as PackageJSON).name;
+    this.extensionName = getConfigurationSection();
     this.captureCurrentValues();
   }
 

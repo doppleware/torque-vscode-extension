@@ -396,7 +396,8 @@ async function addScriptToGrain(
   } catch (error) {
     logger.error("Error parsing or updating YAML", error as Error);
     throw new Error(
-      `Failed to update blueprint: ${error instanceof Error ? error.message : String(error)}`
+      `Failed to update blueprint: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error }
     );
   }
 }

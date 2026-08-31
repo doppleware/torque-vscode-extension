@@ -69,8 +69,7 @@ grains:
     // Arrange
     let inputPromptCalled = false;
     let inputValidationFunction:
-      | vscode.InputBoxOptions["validateInput"]
-      | undefined;
+      vscode.InputBoxOptions["validateInput"] | undefined;
 
     (vscode.window as any).showInputBox = async (
       options: vscode.InputBoxOptions

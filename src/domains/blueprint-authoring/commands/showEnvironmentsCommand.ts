@@ -46,15 +46,13 @@ export function registerShowBlueprintEnvironmentsCommand(): vscode.Disposable {
         };
 
         // Create QuickPick items with buttons
-        quickPick.items = environments.map(
-          (env): EnvironmentQuickPickItem => ({
-            label: env.details.definition.metadata.name,
-            description: `Owner: ${env.owner.display_first_name} ${env.owner.display_last_name}`,
-            detail: `ID: ${env.id} | Space: ${env.details.definition.metadata.space_name}`,
-            buttons: [addToChatButton],
-            env
-          })
-        );
+        quickPick.items = environments.map((env): EnvironmentQuickPickItem => ({
+          label: env.details.definition.metadata.name,
+          description: `Owner: ${env.owner.display_first_name} ${env.owner.display_last_name}`,
+          detail: `ID: ${env.id} | Space: ${env.details.definition.metadata.space_name}`,
+          buttons: [addToChatButton],
+          env
+        }));
 
         // Handle button clicks
         quickPick.onDidTriggerItemButton((e) => {

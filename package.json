@@ -44,6 +44,18 @@
           "description": "Default Torque space to use for operations",
           "scope": "resource"
         },
+        "torque-ai.chatAgents": {
+          "type": "array",
+          "default": [],
+          "description": "AI chats configured to use the Torque MCP server",
+          "scope": "application"
+        },
+        "torque-ai.primaryChatAgent": {
+          "type": "string",
+          "default": "",
+          "description": "AI chat opened when adding environment context from Torque",
+          "scope": "application"
+        },
         "torque-ai.activeSpace": {
           "type": "string",
           "default": null,
@@ -58,6 +70,12 @@
         "title": "Configure Torque AI",
         "category": "Torque",
         "icon": "$(gear)"
+      },
+      {
+        "command": "torque.configureAgents",
+        "title": "Choose AI Chats",
+        "category": "Torque",
+        "icon": "$(plug)"
       },
       {
         "command": "torque.setActiveSpace",
@@ -215,12 +233,6 @@
       "prettier --write"
     ]
   },
-  "__metadata": {
-    "id": "2e214876-5bea-4ee6-8026-222de5313d92",
-    "publisherDisplayName": "Quali",
-    "publisherId": "caa21fe0-eb8b-43fd-9197-ae8fb8b1b5df",
-    "isPreReleaseVersion": false
-  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/express": "^5.0.6",
@@ -228,13 +240,13 @@
     "@types/mocha": "^10.0.10",
     "@types/proxyquire": "^1.3.31",
     "@types/sinon": "^21.0.1",
-    "@types/vscode": "^1.134.0",
+    "@types/vscode": "~1.106.0",
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^3.9.2",
     "audit-ci": "^7.1.0",
     "esbuild": "^0.28.2",
-    "eslint": "^9.39.5",
+    "eslint": "^10.9.1",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.11.0",
     "jiti": "^2.7.0",
@@ -255,5 +267,16 @@
     "husky": "^9.1.7",
     "js-yaml": "^5.4.1",
     "path-to-regexp": "^8.4.2"
+  },
+  "overrides": {
+    "diff": "^9.0.0",
+    "serialize-javascript": "^7.1.1",
+    "minimatch": "^10.2.6",
+    "table": {
+      "ajv": "^8.20.0"
+    },
+    "@secretlint/config-loader": {
+      "ajv": "^8.20.0"
+    }
   }
 }

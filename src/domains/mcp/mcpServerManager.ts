@@ -15,8 +15,7 @@
 
 import vscode from "vscode";
 
-const MCP_SERVER_LABEL = "torque";
-const MCP_SERVER_PROVIDER_ID = "torqueMcpProvider";
+import { MCP_SERVER_LABEL, MCP_SERVER_PROVIDER_ID } from "../../branding";
 
 /**
  * Creates a secure MCP server URI with proper authentication headers
@@ -176,7 +175,9 @@ export const registerMcpServer = (
     const errorMessage = error instanceof Error ? error.message : String(error);
     // eslint-disable-next-line no-console
     console.error(`[Torque MCP] Validation failed: ${errorMessage}`);
-    throw new Error(`Invalid MCP server configuration: ${errorMessage}`);
+    throw new Error(`Invalid MCP server configuration: ${errorMessage}`, {
+      cause: error
+    });
   }
 
   // Perform initial health check
