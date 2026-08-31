@@ -17,12 +17,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/doppleware/torque-vscode-extension"
+    "url": "https://github.com/QualiTorque/torque-vscode-extension"
   },
   "bugs": {
-    "url": "https://github.com/doppleware/torque-vscode-extension/issues"
+    "url": "https://github.com/QualiTorque/torque-vscode-extension/issues"
   },
-  "homepage": "https://github.com/doppleware/torque-vscode-extension",
+  "homepage": "https://github.com/QualiTorque/torque-vscode-extension",
   "categories": [
     "Programming Languages",
     "Visualization",
