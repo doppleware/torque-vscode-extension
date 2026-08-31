@@ -234,7 +234,7 @@
     ]
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.5",
+    "@eslint/js": "^10.0.1",
     "@types/express": "^5.0.6",
     "@types/js-yaml": "^4.0.9",
     "@types/mocha": "^10.0.10",
@@ -246,7 +246,7 @@
     "@vscode/vsce": "^3.9.2",
     "audit-ci": "^7.1.0",
     "esbuild": "^0.28.2",
-    "eslint": "^9.39.5",
+    "eslint": "^10.9.1",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.11.0",
     "jiti": "^2.7.0",
