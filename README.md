@@ -182,4 +182,4 @@ Complete feature specifications are available in the [spec/](spec/) directory:
 
 ## License
 
-[MIT](/LICENSE)
+[Apache-2.0](/LICENSE)
