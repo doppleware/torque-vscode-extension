@@ -13,6 +13,11 @@ import * as vscode from "vscode";
 import { logger } from "../../../utils/Logger";
 import type { ApiClient } from "../../../api/ApiClient";
 import type { SettingsManager } from "../SettingsManager";
+import {
+  getCommandId,
+  getPlatformName,
+  getProductName
+} from "../../../branding";
 
 /**
  * Registers the torque.setActiveSpace command
@@ -27,18 +32,18 @@ export function registerSetActiveSpaceCommand(
 ): vscode.Disposable | undefined {
   try {
     const command = vscode.commands.registerCommand(
-      "torque.setActiveSpace",
+      getCommandId("setActiveSpace"),
       async () => {
         try {
           // Get the API client
           const apiClient = getApiClient();
           if (!apiClient) {
             const configure = await vscode.window.showErrorMessage(
-              "Torque AI is not configured. Please configure it first.",
+              `${getProductName()} is not configured. Please configure it first.`,
               "Configure Now"
             );
             if (configure === "Configure Now") {
-              await vscode.commands.executeCommand("torque.setup");
+              await vscode.commands.executeCommand(getCommandId("setup"));
             }
             return;
           }
@@ -49,7 +54,7 @@ export function registerSetActiveSpaceCommand(
 
           if (allSpaces.length === 0) {
             vscode.window.showWarningMessage(
-              "No spaces found in your Torque account."
+              `No spaces found in your ${getPlatformName()} account.`
             );
             return;
           }
@@ -107,8 +112,8 @@ export function registerSetActiveSpaceCommand(
               ? `Current active space: ${currentActiveSpace}`
               : defaultSpace
                 ? `Active space: ${defaultSpace} (Default)`
-                : "Select active Torque space for this workspace",
-            title: "Set Active Torque Space",
+                : `Select active ${getPlatformName()} space for this workspace`,
+            title: `Set Active ${getPlatformName()} Space`,
             // Enable matching on description to help find spaces
             matchOnDescription: true
           });

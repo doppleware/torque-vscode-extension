@@ -1,17 +1,22 @@
 import * as vscode from "vscode";
 import { promptAndConfigureAgents } from "../../mcp/configureAgents";
 import type { SettingsManager } from "../SettingsManager";
+import {
+  getCommandId,
+  getPlatformName,
+  getProductName
+} from "../../../branding";
 
 export const registerConfigureAgentsCommand = (
   settingsManager: SettingsManager
 ): vscode.Disposable =>
-  vscode.commands.registerCommand("torque.configureAgents", async () => {
+  vscode.commands.registerCommand(getCommandId("configureAgents"), async () => {
     const url = await settingsManager.getSetting<string>("url");
     const token = await settingsManager.getSetting<string>("token");
 
     if (!url || !token) {
       vscode.window.showWarningMessage(
-        "Torque is not configured yet. Run 'Configure Torque AI' first."
+        `${getPlatformName()} is not configured yet. Run 'Configure ${getProductName()}' first.`
       );
       return;
     }

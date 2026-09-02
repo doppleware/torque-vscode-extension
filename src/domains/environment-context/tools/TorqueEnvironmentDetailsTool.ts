@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import type { ApiClient } from "../../../api/ApiClient";
 import { getClient } from "../../../extension";
+import { getPlatformName, getTerm } from "../../../branding";
 
 interface EnvironmentDetailsParameters {
   space_name: string;
@@ -115,13 +116,13 @@ export class TorqueEnvironmentDetailsTool implements vscode.LanguageModelTool<En
     const { space_name, environment_id } = options.input;
 
     return {
-      invocationMessage: `Fetching environment details for ${environment_id} in space ${space_name}`,
+      invocationMessage: `Fetching ${getTerm("environment")} details for ${environment_id} in space ${space_name}`,
       confirmationMessages: {
-        title: "Get Torque Environment Details",
+        title: `Get ${getPlatformName()} ${getTerm("Environment")} Details`,
         message: new vscode.MarkdownString(
           `**Space**: ${space_name}\n` +
-            `**Environment ID**: ${environment_id}\n\n` +
-            `Fetching environment details from Torque API.`
+            `**${getTerm("Environment")} ID**: ${environment_id}\n\n` +
+            `Fetching ${getTerm("environment")} details from ${getPlatformName()} API.`
         )
       }
     };
@@ -152,16 +153,16 @@ export class TorqueEnvironmentDetailsTool implements vscode.LanguageModelTool<En
 
       return new vscode.LanguageModelToolResult([
         new vscode.LanguageModelTextPart(
-          `## Environment Context: ${environment_id}\n\n` +
-            `Here is the complete environment configuration including grains, resources, and workflows:\n\n` +
+          `## ${getTerm("Environment")} Context: ${environment_id}\n\n` +
+            `Here is the complete ${getTerm("environment")} configuration including grains, resources, and workflows:\n\n` +
             `\`\`\`yaml\n${yamlContent}\n\`\`\``
         )
       ]);
     } catch (error) {
       return new vscode.LanguageModelToolResult([
         new vscode.LanguageModelTextPart(
-          `❌ **Error**: Failed to fetch environment details: ${error instanceof Error ? error.message : "Unknown error"}\n\n` +
-            `Please check your Torque configuration and ensure the space name and environment ID are correct.`
+          `❌ **Error**: Failed to fetch ${getTerm("environment")} details: ${error instanceof Error ? error.message : "Unknown error"}\n\n` +
+            `Please check your ${getPlatformName()} configuration and ensure the space name and ${getTerm("environment")} ID are correct.`
         )
       ]);
     }
@@ -215,7 +216,7 @@ export class TorqueEnvironmentDetailsTool implements vscode.LanguageModelTool<En
       // If we get a 401 or other auth error, attempt to login
       // Note: In a real implementation, you'd get credentials from VS Code settings or prompt user
       throw new Error(
-        "Authentication required. Please ensure you are logged in to Torque."
+        `Authentication required. Please ensure you are logged in to ${getPlatformName()}.`
       );
     }
   }
@@ -237,11 +238,11 @@ export class TorqueEnvironmentDetailsTool implements vscode.LanguageModelTool<En
     environmentId: string
   ): string {
     let result = `**Space**: ${spaceName}\n`;
-    result += `**Environment ID**: ${environmentId}\n\n`;
+    result += `**${getTerm("Environment")} ID**: ${environmentId}\n\n`;
 
     // Status and basic info
     if (details.is_workflow) {
-      result += `🔄 **Type**: Workflow Environment\n`;
+      result += `🔄 **Type**: Workflow ${getTerm("Environment")}\n`;
     }
     if (details.is_published) {
       result += `📢 **Status**: Published\n`;

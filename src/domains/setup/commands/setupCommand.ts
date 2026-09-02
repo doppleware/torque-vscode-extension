@@ -13,6 +13,11 @@ import { logger } from "../../../utils/Logger";
 import { ApiClient } from "../../../api/ApiClient";
 import { promptAndConfigureAgents } from "../../mcp/configureAgents";
 import type { SettingsManager } from "../SettingsManager";
+import {
+  getApiUrlPlaceholder,
+  getCommandId,
+  getPlatformName
+} from "../../../branding";
 
 type InitializeClientFn = (
   settingsManager: SettingsManager,
@@ -34,13 +39,13 @@ export function registerSetupCommand(
 ): vscode.Disposable | undefined {
   try {
     const command = vscode.commands.registerCommand(
-      "torque.setup",
+      getCommandId("setup"),
       async () => {
         try {
           // Get URL
           const url = await vscode.window.showInputBox({
-            prompt: "Enter your Torque API URL",
-            placeHolder: "e.g., https://account.qtorque.io",
+            prompt: `Enter your ${getPlatformName()} API URL`,
+            placeHolder: getApiUrlPlaceholder(),
             validateInput: (value) => {
               if (!value) {
                 return "URL is required";
@@ -60,7 +65,7 @@ export function registerSetupCommand(
 
           // Get token
           const token = await vscode.window.showInputBox({
-            prompt: "Enter your Torque API token",
+            prompt: `Enter your ${getPlatformName()} API token`,
             password: true,
             placeHolder: "API token will be stored securely",
             validateInput: (value) => {
@@ -97,7 +102,7 @@ export function registerSetupCommand(
               }));
 
               const selected = await vscode.window.showQuickPick(spaceItems, {
-                placeHolder: "Select your default Torque space",
+                placeHolder: `Select your default ${getPlatformName()} space`,
                 title: "Set Default Space"
               });
 

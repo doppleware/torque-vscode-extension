@@ -7,6 +7,7 @@
 import * as vscode from "vscode";
 import { logger } from "../../../utils/Logger";
 import type { SettingsManager } from "../SettingsManager";
+import { getCommandId } from "../../../branding";
 
 /**
  * Registers the torque.resetFirstTime command
@@ -21,7 +22,7 @@ export function registerResetFirstTimeCommand(
 ): vscode.Disposable | undefined {
   try {
     const command = vscode.commands.registerCommand(
-      "torque.resetFirstTime",
+      getCommandId("resetFirstTime"),
       async () => {
         // Reset first-time state
         await context.globalState.update("hasBeenActivatedBefore", false);

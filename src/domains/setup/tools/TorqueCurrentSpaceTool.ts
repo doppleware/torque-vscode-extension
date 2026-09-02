@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import type { SettingsManager } from "../SettingsManager";
+import { getPlatformName, getProductName } from "../../../branding";
 
 /**
  * Language Model Tool to get the current Torque space
@@ -14,11 +15,11 @@ export class TorqueCurrentSpaceTool implements vscode.LanguageModelTool<void> {
 
   prepareInvocation(): vscode.PreparedToolInvocation {
     return {
-      invocationMessage: "Getting current Torque space",
+      invocationMessage: `Getting current ${getPlatformName()} space`,
       confirmationMessages: {
-        title: "Get Current Torque Space",
+        title: `Get Current ${getPlatformName()} Space`,
         message: new vscode.MarkdownString(
-          "Retrieving the currently active or default Torque space."
+          `Retrieving the currently active or default ${getPlatformName()} space.`
         )
       }
     };
@@ -44,15 +45,15 @@ export class TorqueCurrentSpaceTool implements vscode.LanguageModelTool<void> {
       if (!currentSpace) {
         return new vscode.LanguageModelToolResult([
           new vscode.LanguageModelTextPart(
-            "⚠️ **No Torque space configured**\n\n" +
-              "Neither an active space nor a default space is set. Please configure a Torque space using:\n" +
-              "- `Torque: Set Active Torque Space` - Set workspace-specific space\n" +
-              "- `Torque: Set Default Torque Space` - Set global default space"
+            `⚠️ **No ${getPlatformName()} space configured**\n\n` +
+              `Neither an active space nor a default space is set. Please configure a ${getPlatformName()} space using:\n` +
+              `- \`${getPlatformName()}: Set Active ${getPlatformName()} Space\` - Set workspace-specific space\n` +
+              `- \`${getPlatformName()}: Set Default ${getPlatformName()} Space\` - Set global default space`
           )
         ]);
       }
 
-      let result = `## Current Torque Space\n\n`;
+      let result = `## Current ${getPlatformName()} Space\n\n`;
       result += `**Space Name**: ${currentSpace}\n\n`;
 
       if (activeSpace && defaultSpace && activeSpace === defaultSpace) {
@@ -72,8 +73,8 @@ export class TorqueCurrentSpaceTool implements vscode.LanguageModelTool<void> {
     } catch (error) {
       return new vscode.LanguageModelToolResult([
         new vscode.LanguageModelTextPart(
-          `❌ **Error**: Failed to get current Torque space: ${error instanceof Error ? error.message : "Unknown error"}\n\n` +
-            `Please ensure the Torque AI extension is properly configured.`
+          `❌ **Error**: Failed to get current ${getPlatformName()} space: ${error instanceof Error ? error.message : "Unknown error"}\n\n` +
+            `Please ensure the ${getProductName()} extension is properly configured.`
         )
       ]);
     }

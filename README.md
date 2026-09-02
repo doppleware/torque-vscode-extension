@@ -86,11 +86,12 @@ The extension automatically registers as an MCP (Model Context Protocol) server 
 
 ## Configuration
 
-| Setting              | Type   | Default                  | Description                   |
-| -------------------- | ------ | ------------------------ | ----------------------------- |
-| `torque.url`         | string | `https://localhost:5051` | Torque platform API URL       |
-| `torque.token`       | string | -                        | API authentication token      |
-| `torque.activeSpace` | string | -                        | Currently active Torque space |
+| Setting                      | Type   | Default | Description                                      |
+| ---------------------------- | ------ | ------- | ------------------------------------------------ |
+| `torque-ai.space`            | string | -       | Default Torque space to use for operations       |
+| `torque-ai.activeSpace`      | string | -       | Currently active Torque space for the workspace  |
+| `torque-ai.chatAgents`       | array  | `[]`    | AI chats configured to use the Torque MCP server |
+| `torque-ai.primaryChatAgent` | string | -       | AI chat opened when adding environment context   |
 
 Settings can be configured at global, workspace, or workspace folder scope.
 

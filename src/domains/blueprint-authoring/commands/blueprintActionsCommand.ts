@@ -16,10 +16,20 @@ import {
   SyncBlueprintAction,
   DeployBlueprintAction
 } from "./actions";
+import {
+  getCommandId,
+  getDiagnosticCollectionName,
+  getPlatformName
+} from "../../../branding";
 
-// Create a diagnostic collection for blueprint validation
-const blueprintDiagnostics =
-  vscode.languages.createDiagnosticCollection("torque-blueprint");
+let blueprintDiagnostics: vscode.DiagnosticCollection | undefined;
+
+const getBlueprintDiagnostics = (): vscode.DiagnosticCollection => {
+  blueprintDiagnostics ??= vscode.languages.createDiagnosticCollection(
+    getDiagnosticCollectionName("blueprint")
+  );
+  return blueprintDiagnostics;
+};
 
 /**
  * Register the blueprint actions command
@@ -33,7 +43,7 @@ export function registerBlueprintActionsCommand(
   const validateAction = new ValidateBlueprintAction(
     settingsManager,
     getApiClient,
-    blueprintDiagnostics
+    getBlueprintDiagnostics()
   );
   const syncAction = new SyncBlueprintAction(settingsManager, getApiClient);
   const deployAction = new DeployBlueprintAction(
@@ -43,7 +53,7 @@ export function registerBlueprintActionsCommand(
   );
 
   const commandDisposable = vscode.commands.registerCommand(
-    "torque.blueprintActions",
+    getCommandId("blueprintActions"),
     async (blueprintUri?: vscode.Uri) => {
       try {
         logger.info("Blueprint actions command invoked");
@@ -78,7 +88,7 @@ export function registerBlueprintActionsCommand(
             },
             {
               label: "$(rocket) Deploy",
-              description: "Deploy the blueprint to Torque",
+              description: `Deploy the blueprint to ${getPlatformName()}`,
               action: "deploy"
             }
           ],
@@ -119,5 +129,5 @@ export function registerBlueprintActionsCommand(
   );
 
   // Return a composite disposable that includes both the command and the diagnostic collection
-  return vscode.Disposable.from(commandDisposable, blueprintDiagnostics);
+  return vscode.Disposable.from(commandDisposable, getBlueprintDiagnostics());
 }

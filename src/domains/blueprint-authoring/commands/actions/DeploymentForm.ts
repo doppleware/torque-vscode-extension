@@ -9,6 +9,7 @@
  */
 
 import * as vscode from "vscode";
+import { getTerm } from "../../../../branding";
 
 interface FormField {
   type: "input" | "select";
@@ -61,7 +62,7 @@ export class DeploymentForm {
       {
         type: "input",
         name: "_environment_name",
-        label: "Environment Name",
+        label: `${getTerm("Environment")} Name`,
         value: environmentName,
         inputType: "string"
       },
@@ -114,7 +115,7 @@ export class DeploymentForm {
       // Add submit and cancel buttons
       const submitItem = {
         label: "$(check) Deploy",
-        description: "Deploy the environment with these settings",
+        description: `Deploy the ${getTerm("environment")} with these settings`,
         detail: "All required inputs have been configured",
         field: null as FormField | null
       };
@@ -152,7 +153,7 @@ export class DeploymentForm {
 
         // Check environment name
         if (!environmentName || environmentName.trim() === "") {
-          missingFields.push("Environment Name");
+          missingFields.push(`${getTerm("Environment")} Name`);
         }
 
         // Check all input fields
@@ -188,10 +189,10 @@ export class DeploymentForm {
       // Edit the selected field
       if (field.name === "_environment_name") {
         const value = await vscode.window.showInputBox({
-          prompt: "Enter environment name",
+          prompt: `Enter ${getTerm("environment")} name`,
           value: environmentName,
           placeHolder: `${this.blueprintName}-env`,
-          title: `Deploy ${this.blueprintName} - Environment Name`
+          title: `Deploy ${this.blueprintName} - ${getTerm("Environment")} Name`
         });
 
         if (value !== undefined) {

@@ -20,6 +20,7 @@ import type {
 } from "../../../../api/services/types";
 import type { SettingsManager } from "../../../setup/SettingsManager";
 import type { ApiClient } from "../../../../api/ApiClient";
+import { getTerm } from "../../../../branding";
 
 const DEPLOYMENT_VALUES_KEY = "torque.deploymentValues";
 
@@ -244,7 +245,7 @@ export class DeployBlueprintAction extends BaseBlueprintAction {
       await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
-          title: `Deploying environment "${environmentName}"...`,
+          title: `Deploying ${getTerm("environment")} "${environmentName}"...`,
           cancellable: false
         },
         async () => {
@@ -262,7 +263,7 @@ export class DeployBlueprintAction extends BaseBlueprintAction {
           logger.info("=========================");
 
           const viewEnv = await vscode.window.showInformationMessage(
-            `✓ Environment "${environmentName}" deployed successfully!`,
+            `✓ ${getTerm("Environment")} "${environmentName}" deployed successfully!`,
             "View in Portal"
           );
 

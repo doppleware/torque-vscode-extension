@@ -1,0 +1,11 @@
+{
+  "manifest": {
+    "name": "torque-ai",
+    "displayName": "Torque AI",
+    "icon": "branding/torque/logo.png"
+  },
+  "links": {
+    "apiExample": "https://account.qtorque.io",
+    "docs": "https://docs.qtorque.io/"
+  }
+}

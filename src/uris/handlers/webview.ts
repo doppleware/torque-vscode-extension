@@ -1,10 +1,11 @@
 import vscode from "vscode";
+import { getPlatformName } from "../../branding";
 
 export const openWebviewWithUrl = (url: string) => {
   try {
     const panel = vscode.window.createWebviewPanel(
       "editorWebview",
-      "Torque",
+      `${getPlatformName()}`,
       vscode.ViewColumn.One,
       {
         enableScripts: true,
@@ -24,7 +25,7 @@ function getWebviewContent(url: string): string {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Torque Webview</title>
+    <title>${getPlatformName()} Webview</title>
     <style>
         body, html {
             margin: 0;

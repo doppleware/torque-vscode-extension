@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { AGENT_MCP_TARGETS } from "../../ides/mcpConfigTargets";
 import { logger } from "../../utils/Logger";
 import { writeAgentMcpConfig } from "./writeAgentMcpConfig";
+import { getPlatformName, getProductName, getTerm } from "../../branding";
 
 export interface ConfiguredAgents {
   agents: string[];
@@ -35,7 +36,7 @@ export const promptAndConfigureAgents = async (
   const picked = await vscode.window.showQuickPick(items, {
     canPickMany: true,
     title: "Which AI chats do you use?",
-    placeHolder: "Torque will add its MCP server to the ones you select"
+    placeHolder: `${getPlatformName()} will add its MCP server to the ones you select`
   });
 
   if (!picked || !Array.isArray(picked) || picked.length === 0) {
@@ -49,7 +50,9 @@ export const promptAndConfigureAgents = async (
   for (const item of picked) {
     try {
       const filePath = writeAgentMcpConfig(item.target, url, token);
-      logger.info(`Wrote Torque MCP config for ${item.target.id}: ${filePath}`);
+      logger.info(
+        `Wrote ${getPlatformName()} MCP config for ${item.target.id}: ${filePath}`
+      );
       configured.push(item.target.id);
       written.push(item.label);
     } catch (error) {
@@ -64,13 +67,13 @@ export const promptAndConfigureAgents = async (
 
   if (written.length > 0) {
     vscode.window.showInformationMessage(
-      `Torque MCP server added to: ${written.join(", ")}. Restart the chat to pick it up.`
+      `${getPlatformName()} MCP server added to: ${written.join(", ")}. Restart the chat to pick it up.`
     );
   }
 
   if (failed.length > 0) {
     vscode.window.showErrorMessage(
-      `Could not update: ${failed.join(", ")}. See the Torque AI output channel.`
+      `Could not update: ${failed.join(", ")}. See the ${getProductName()} output channel.`
     );
   }
 
@@ -88,8 +91,8 @@ export const promptAndConfigureAgents = async (
       return { label: target?.label ?? id, id };
     }),
     {
-      title: "Which chat should Torque open from the environment page?",
-      placeHolder: "Used when opening environment context from Torque"
+      title: `Which chat should ${getPlatformName()} open from the ${getTerm("environment")} page?`,
+      placeHolder: `Used when opening ${getTerm("environment")} context from ${getPlatformName()}`
     }
   );
 

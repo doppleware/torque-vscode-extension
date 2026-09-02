@@ -57,14 +57,17 @@ jobs:
       - name: Build production
         run: npm run build:prod
 
-      - name: Package extension
-        run: npm run package
+      - name: Package extensions
+        run: npm run package:all
+
+      - name: Verify packaged extensions
+        run: npm run verify:packages
 
       - name: Upload VSIX
         uses: actions/upload-artifact@v4
         with:
-          name: torque-extension
-          path: '*.vsix'
+          name: vsix-packages
+          path: 'dist/*.vsix'
 
   release:
     needs: build-and-test
@@ -84,7 +87,8 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          name: torque-extension
+          name: vsix-packages
+          path: dist
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -93,7 +97,7 @@ jobs:
           name: Release v${{ steps.version.outputs.version }}
           draft: false
           prerelease: false
-          files: '*.vsix'
+          files: 'dist/*.vsix'
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -120,7 +124,7 @@ jobs:
   #     - name: Build and package
   #       run: |
   #         npm run build:prod
-  #         npm run package
+  #         npm run package:all
   #
   #     - name: Publish to VS Code Marketplace
   #       run: npx vsce publish --pat ${{ secrets.VSCE_PAT }}

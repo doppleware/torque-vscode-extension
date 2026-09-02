@@ -10,6 +10,7 @@
 import * as vscode from "vscode";
 import { BLUEPRINT_TEMPLATE } from "../templates/blueprintTemplate";
 import { logger } from "../../../utils/Logger";
+import { getCommandId, getPlatformName } from "../../../branding";
 
 /**
  * Registers the torque.createBlueprint command
@@ -20,7 +21,7 @@ export function registerCreateBlueprintCommand():
   vscode.Disposable | undefined {
   try {
     const command = vscode.commands.registerCommand(
-      "torque.createBlueprint",
+      getCommandId("createBlueprint"),
       async () => {
         await createBlueprint();
       }
@@ -40,7 +41,7 @@ async function createBlueprint(): Promise<void> {
   const workspaceFolders = vscode.workspace.workspaceFolders;
   if (!workspaceFolders || workspaceFolders.length === 0) {
     vscode.window.showErrorMessage(
-      "Please open a workspace folder before creating a Torque Blueprint"
+      `Please open a workspace folder before creating a ${getPlatformName()} Blueprint`
     );
     return;
   }
@@ -92,15 +93,18 @@ async function createBlueprint(): Promise<void> {
     await vscode.window.showTextDocument(document);
 
     vscode.window.showInformationMessage(
-      `Torque Blueprint created: ${filename}`
+      `${getPlatformName()} Blueprint created: ${filename}`
     );
-    logger.info(`Created Torque Blueprint: ${filename}`);
+    logger.info(`Created ${getPlatformName()} Blueprint: ${filename}`);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     vscode.window.showErrorMessage(
       `Failed to create blueprint: ${errorMessage}`
     );
-    logger.error("Failed to create Torque Blueprint", error as Error);
+    logger.error(
+      `Failed to create ${getPlatformName()} Blueprint`,
+      error as Error
+    );
   }
 }
 

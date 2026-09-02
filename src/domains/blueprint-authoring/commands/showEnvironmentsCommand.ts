@@ -14,6 +14,7 @@ import * as vscode from "vscode";
 import { logger } from "../../../utils/Logger";
 import type { Environment } from "../../../api/services/types";
 import { attachEnvironmentFileToChatContext } from "../../environment-context/handlers/environmentContextHandler";
+import { getCommandId, getTerm } from "../../../branding";
 
 interface EnvironmentQuickPickItem extends vscode.QuickPickItem {
   env: Environment;
@@ -24,7 +25,7 @@ interface EnvironmentQuickPickItem extends vscode.QuickPickItem {
  */
 export function registerShowBlueprintEnvironmentsCommand(): vscode.Disposable {
   return vscode.commands.registerCommand(
-    "torque.showBlueprintEnvironments",
+    getCommandId("showBlueprintEnvironments"),
     (blueprintName: string, environments: Environment[]) => {
       try {
         logger.info(
@@ -34,15 +35,15 @@ export function registerShowBlueprintEnvironmentsCommand(): vscode.Disposable {
         // Create QuickPick manually to support buttons
         const quickPick =
           vscode.window.createQuickPick<EnvironmentQuickPickItem>();
-        quickPick.title = `Blueprint Environments (${environments.length})`;
-        quickPick.placeholder = `Active environments for blueprint: ${blueprintName}`;
+        quickPick.title = `Blueprint ${getTerm("Environments")} (${environments.length})`;
+        quickPick.placeholder = `Active ${getTerm("environments")} for blueprint: ${blueprintName}`;
         quickPick.matchOnDescription = true;
         quickPick.matchOnDetail = true;
 
         // Create button for "Add to chat"
         const addToChatButton: vscode.QuickInputButton = {
           iconPath: new vscode.ThemeIcon("comment-discussion"),
-          tooltip: "Add environment to chat context"
+          tooltip: `Add ${getTerm("environment")} to chat context`
         };
 
         // Create QuickPick items with buttons
@@ -74,7 +75,7 @@ export function registerShowBlueprintEnvironmentsCommand(): vscode.Disposable {
             } catch (error) {
               logger.error("Error adding environment to chat", error as Error);
               vscode.window.showErrorMessage(
-                `Failed to add environment to chat: ${error instanceof Error ? error.message : String(error)}`
+                `Failed to add ${getTerm("environment")} to chat: ${error instanceof Error ? error.message : String(error)}`
               );
             }
           })();
@@ -100,7 +101,7 @@ export function registerShowBlueprintEnvironmentsCommand(): vscode.Disposable {
       } catch (error) {
         logger.error("Error showing blueprint environments", error as Error);
         vscode.window.showErrorMessage(
-          `Failed to show environments: ${error instanceof Error ? error.message : String(error)}`
+          `Failed to show ${getTerm("environments")}: ${error instanceof Error ? error.message : String(error)}`
         );
       }
     }

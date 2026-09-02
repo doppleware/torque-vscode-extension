@@ -6,6 +6,7 @@ import * as vscode from "vscode";
 import * as path from "path";
 import type { ApiClient } from "../../../../api/ApiClient";
 import type { SettingsManager } from "../../../setup/SettingsManager";
+import { getCommandId, getProductName } from "../../../../branding";
 
 export abstract class BaseBlueprintAction {
   constructor(
@@ -25,11 +26,11 @@ export abstract class BaseBlueprintAction {
     const client = this.getApiClient();
     if (!client) {
       const configure = await vscode.window.showErrorMessage(
-        "Torque AI is not configured. Please configure it first.",
+        `${getProductName()} is not configured. Please configure it first.`,
         "Configure Now"
       );
       if (configure === "Configure Now") {
-        await vscode.commands.executeCommand("torque.setup");
+        await vscode.commands.executeCommand(getCommandId("setup"));
       }
       return null;
     }

@@ -14,7 +14,23 @@ import {
   registerResetFirstTimeCommand
 } from "./domains/setup";
 import { handleEnvironmentContextUrl } from "./domains/environment-context";
-import { getConfigurationKey, initializeBranding } from "./branding";
+import {
+  getCommandId,
+  getConfigurationKey,
+  getDocsReference,
+  getExtensionId,
+  getMcpServerName,
+  getPlatformName,
+  getProductName,
+  getTerminologyBridge,
+  getToolName,
+  initializeBranding
+} from "./branding";
+import {
+  BASE_TOOL_NAMES,
+  CURRENT_SPACE_TOOL,
+  ENVIRONMENT_DETAILS_TOOL
+} from "./brandNaming";
 import { openWebviewWithUrl } from "./uris/handlers/webview";
 import { UriRouter } from "./uris/UriRouter";
 import { logger } from "./utils/Logger";
@@ -203,7 +219,7 @@ const registerAgentInstructions = async (
   context: vscode.ExtensionContext
 ): Promise<void> => {
   try {
-    logger.debug("Setting up Torque AI agent instructions");
+    logger.debug(`Setting up ${getProductName()} agent instructions`);
 
     // Enable the GitHub Copilot instruction files setting
     const config = vscode.workspace.getConfiguration(
@@ -253,14 +269,29 @@ const registerAgentInstructions = async (
     );
 
     try {
-      const content = await vscode.workspace.fs.readFile(templateFile);
-      await vscode.workspace.fs.writeFile(instructionFile, content);
+      const template = await vscode.workspace.fs.readFile(templateFile);
+      const content = BASE_TOOL_NAMES.reduce(
+        (text, baseToolName) =>
+          text.split(baseToolName).join(getToolName(baseToolName)),
+        Buffer.from(template)
+          .toString("utf8")
+          .split("{{PLATFORM}}")
+          .join(getPlatformName())
+          .split("{{TERMINOLOGY}}")
+          .join(getTerminologyBridge())
+          .split("{{DOCS}}")
+          .join(getDocsReference())
+      );
+      await vscode.workspace.fs.writeFile(
+        instructionFile,
+        Buffer.from(content, "utf8")
+      );
       logger.info(
-        "Successfully installed GitHub Copilot instruction file from Torque template"
+        `Successfully installed GitHub Copilot instruction file from ${getPlatformName()} template`
       );
     } catch (error) {
       logger.warn(
-        "Could not copy Torque instruction template to Copilot instruction file",
+        `Could not copy ${getPlatformName()} instruction template to Copilot instruction file`,
         {
           error: error instanceof Error ? error.message : String(error)
         }
@@ -281,9 +312,9 @@ const registerAgentInstructions = async (
  */
 const showMcpSetupSuccessMessage = async (): Promise<void> => {
   const result = await vscode.window.showInformationMessage(
-    "✅ Torque AI configured successfully!\n\n" +
+    `✅ ${getProductName()} configured successfully!\n\n` +
       "🔧 MCP server registered and ready to use.\n" +
-      "📱 Open Copilot Chat to access Torque AI tools.",
+      `📱 Open Copilot Chat to access ${getProductName()} tools.`,
     "Open Chat",
     "Check Status"
   );
@@ -293,11 +324,11 @@ const showMcpSetupSuccessMessage = async (): Promise<void> => {
       await vscode.commands.executeCommand("workbench.action.chat.open");
     } catch {
       vscode.window.showInformationMessage(
-        "Could not open chat automatically. Please open Copilot Chat manually and look for Torque tools."
+        `Could not open chat automatically. Please open Copilot Chat manually and look for ${getPlatformName()} tools.`
       );
     }
   } else if (result === "Check Status") {
-    await vscode.commands.executeCommand("torque.checkMcpStatus");
+    await vscode.commands.executeCommand(getCommandId("checkMcpStatus"));
   }
 };
 
@@ -307,9 +338,9 @@ export async function activate(context: vscode.ExtensionContext) {
     return;
   }
   isActivated = true;
-  logger.info("Torque AI extension activating");
-
   initializeBranding(context);
+
+  logger.info(`${getProductName()} extension activating`);
 
   const uriRouter = new UriRouter();
 
@@ -335,24 +366,24 @@ export async function activate(context: vscode.ExtensionContext) {
       const { TorqueEnvironmentDetailsTool } =
         await import("./domains/environment-context/tools/TorqueEnvironmentDetailsTool");
       const environmentTool = vscode.lm.registerTool(
-        "torque_get_environment_details",
+        getToolName(ENVIRONMENT_DETAILS_TOOL),
         new TorqueEnvironmentDetailsTool()
       );
       context.subscriptions.push(environmentTool);
       logger.info(
-        "✅ Successfully registered torque_get_environment_details Language Model Tool"
+        `✅ Successfully registered ${getToolName(ENVIRONMENT_DETAILS_TOOL)} Language Model Tool`
       );
 
       // Register current space tool
       const { TorqueCurrentSpaceTool } =
         await import("./domains/setup/tools/TorqueCurrentSpaceTool");
       const currentSpaceTool = vscode.lm.registerTool(
-        "get_current_torque_space",
+        getToolName(CURRENT_SPACE_TOOL),
         new TorqueCurrentSpaceTool(settingsManager)
       );
       context.subscriptions.push(currentSpaceTool);
       logger.info(
-        "✅ Successfully registered get_current_torque_space Language Model Tool"
+        `✅ Successfully registered ${getToolName(CURRENT_SPACE_TOOL)} Language Model Tool`
       );
     } catch (error) {
       logger.error(
@@ -360,7 +391,7 @@ export async function activate(context: vscode.ExtensionContext) {
         error instanceof Error ? error : new Error(String(error))
       );
       vscode.window.showWarningMessage(
-        "Failed to register Torque tools. Some AI features may not work."
+        `Failed to register ${getPlatformName()} tools. Some AI features may not work.`
       );
     }
   } else {
@@ -472,7 +503,7 @@ export async function activate(context: vscode.ExtensionContext) {
   let triggerMcpDiscoveryCommand: vscode.Disposable | undefined;
   try {
     triggerMcpDiscoveryCommand = vscode.commands.registerCommand(
-      "torque.triggerMcpDiscovery",
+      getCommandId("triggerMcpDiscovery"),
       () => {
         if (mcpServerDisposable) {
           mcpServerDisposable.triggerDiscovery();
@@ -481,7 +512,7 @@ export async function activate(context: vscode.ExtensionContext) {
           );
         } else {
           vscode.window.showWarningMessage(
-            "No MCP server registered. Run 'Setup Torque AI' command first."
+            `No MCP server registered. Run 'Setup ${getProductName()}' command first.`
           );
         }
       }
@@ -496,11 +527,11 @@ export async function activate(context: vscode.ExtensionContext) {
   let checkMcpHealthCommand: vscode.Disposable | undefined;
   try {
     checkMcpHealthCommand = vscode.commands.registerCommand(
-      "torque.checkMcpHealth",
+      getCommandId("checkMcpHealth"),
       async () => {
         if (!mcpServerDisposable) {
           vscode.window.showWarningMessage(
-            "No MCP server registered. Run 'Setup Torque AI' command first."
+            `No MCP server registered. Run 'Setup ${getProductName()}' command first.`
           );
           return;
         }
@@ -545,7 +576,7 @@ export async function activate(context: vscode.ExtensionContext) {
   let checkMcpStatusCommand: vscode.Disposable | undefined;
   try {
     checkMcpStatusCommand = vscode.commands.registerCommand(
-      "torque.checkMcpStatus",
+      getCommandId("checkMcpStatus"),
       async () => {
         const isConfigured = await isExtensionConfigured(settingsManager);
         const status = mcpServerDisposable
@@ -601,7 +632,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
         if (!isConfigured) {
           const result = await vscode.window.showWarningMessage(
-            `📊 Torque AI Status:\n` +
+            `📊 ${getProductName()} Status:\n` +
               `Configuration: ${configStatus}\n` +
               `MCP Server: ${status}\n` +
               `Server Health: ${healthStatus}\n` +
@@ -616,7 +647,7 @@ export async function activate(context: vscode.ExtensionContext) {
           );
 
           if (result === "Configure Now") {
-            await vscode.commands.executeCommand("torque.setup");
+            await vscode.commands.executeCommand(getCommandId("setup"));
           }
           return;
         }
@@ -626,7 +657,7 @@ export async function activate(context: vscode.ExtensionContext) {
           await vscode.commands.executeCommand("mcp.showInstalledServers");
 
           vscode.window.showInformationMessage(
-            `📊 Torque AI Status:\n` +
+            `📊 ${getProductName()} Status:\n` +
               `Configuration: ${configStatus}\n` +
               `MCP Server: ${status}\n` +
               `Server Health: ${healthStatus}\n` +
@@ -638,18 +669,18 @@ export async function activate(context: vscode.ExtensionContext) {
               `MCP Commands: ${mcpCommands.join(", ") || "None"}\n\n` +
               "🔍 Debugging Info:\n" +
               "- Health check shows actual server connectivity\n" +
-              "- Use 'Torque: Check MCP Health' for detailed diagnostics\n" +
-              "- Check browser console (Help > Toggle Developer Tools) for '[Torque MCP]' logs\n" +
-              "- Try 'Torque: Refresh MCP Connection' command\n\n" +
+              `- Use '${getPlatformName()}: Check MCP Health' for detailed diagnostics\n` +
+              `- Check browser console (Help > Toggle Developer Tools) for '[${getPlatformName()} MCP]' logs\n` +
+              `- Try '${getPlatformName()}: Refresh MCP Connection' command\n\n` +
               "💡 Next steps:\n" +
               "1. Check the MCP Servers panel that opened\n" +
               "2. Open Copilot Chat (⌃⌘I or Ctrl+Alt+I)\n" +
-              "3. Click the Tools button and enable 'torque' server\n" +
-              "4. Ask: '@agent use torque tools to analyze my code'"
+              `3. Click the Tools button and enable '${getMcpServerName()}' server\n` +
+              `4. Ask: '@agent use ${getPlatformName()} tools to analyze my code'`
           );
         } catch {
           vscode.window.showInformationMessage(
-            `📊 Torque AI Status:\n` +
+            `📊 ${getProductName()} Status:\n` +
               `Configuration: ${configStatus}\n` +
               `MCP Server: ${status}\n` +
               `Server Health: ${healthStatus}\n` +
@@ -662,8 +693,8 @@ export async function activate(context: vscode.ExtensionContext) {
               "📋 Requirements:\n" +
               "1. Install GitHub Copilot extension\n" +
               "2. Enable Agent Mode in Copilot Chat\n" +
-              "3. Look for Torque tools in the chat interface\n" +
-              "4. Use 'Torque: Check MCP Health' to verify connectivity"
+              `3. Look for ${getPlatformName()} tools in the chat interface\n` +
+              `4. Use '${getPlatformName()}: Check MCP Health' to verify connectivity`
           );
         }
       }
@@ -676,16 +707,16 @@ export async function activate(context: vscode.ExtensionContext) {
   let recreateMcpServerCommand: vscode.Disposable | undefined;
   try {
     recreateMcpServerCommand = vscode.commands.registerCommand(
-      "torque.recreateMcpServer",
+      getCommandId("recreateMcpServer"),
       async () => {
         const isConfigured = await isExtensionConfigured(settingsManager);
         if (!isConfigured) {
           const result = await vscode.window.showWarningMessage(
-            "Extension is not configured. Please configure Torque AI first.",
+            `Extension is not configured. Please configure ${getProductName()} first.`,
             "Configure Now"
           );
           if (result === "Configure Now") {
-            await vscode.commands.executeCommand("torque.setup");
+            await vscode.commands.executeCommand(getCommandId("setup"));
           }
           return;
         }
@@ -764,10 +795,9 @@ export async function activate(context: vscode.ExtensionContext) {
   let testUriCommand: vscode.Disposable | undefined;
   try {
     testUriCommand = vscode.commands.registerCommand(
-      "torque.testUri",
+      getCommandId("testUri"),
       async () => {
-        const testUri =
-          "vscode://quali.torque-ai/chat/context/add/environment/test-space/test-env";
+        const testUri = `vscode://${getExtensionId()}/chat/context/add/environment/test-space/test-env`;
         try {
           await vscode.env.openExternal(vscode.Uri.parse(testUri));
           vscode.window.showInformationMessage(
@@ -937,7 +967,9 @@ export async function activate(context: vscode.ExtensionContext) {
     }
   });
 
-  logger.info("Torque AI extension activation completed successfully");
+  logger.info(
+    `${getProductName()} extension activation completed successfully`
+  );
 
   // Return API for testing
   return {
@@ -946,7 +978,7 @@ export async function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {
-  logger.info("Torque AI extension deactivating");
+  logger.info(`${getProductName()} extension deactivating`);
   if (apiClient) {
     apiClient = null;
   }
