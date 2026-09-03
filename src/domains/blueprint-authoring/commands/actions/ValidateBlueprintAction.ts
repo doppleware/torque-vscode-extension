@@ -13,6 +13,7 @@ import { logger } from "../../../../utils/Logger";
 import { BaseBlueprintAction } from "./BaseBlueprintAction";
 import type { ApiClient } from "../../../../api/ApiClient";
 import type { SettingsManager } from "../../../setup/SettingsManager";
+import { getPlatformName } from "../../../../branding";
 
 export class ValidateBlueprintAction extends BaseBlueprintAction {
   constructor(
@@ -112,9 +113,9 @@ export class ValidateBlueprintAction extends BaseBlueprintAction {
                 diagnostic.code = error.code;
               }
               if (error.name) {
-                diagnostic.source = `Torque: ${error.name}`;
+                diagnostic.source = `${getPlatformName()}: ${error.name}`;
               } else {
-                diagnostic.source = "Torque Validation";
+                diagnostic.source = `${getPlatformName()} Validation`;
               }
 
               diagnosticsList.push(diagnostic);
@@ -136,9 +137,9 @@ export class ValidateBlueprintAction extends BaseBlueprintAction {
                 diagnostic.code = warning.code;
               }
               if (warning.name) {
-                diagnostic.source = `Torque: ${warning.name}`;
+                diagnostic.source = `${getPlatformName()}: ${warning.name}`;
               } else {
-                diagnostic.source = "Torque Validation";
+                diagnostic.source = `${getPlatformName()} Validation`;
               }
 
               diagnosticsList.push(diagnostic);

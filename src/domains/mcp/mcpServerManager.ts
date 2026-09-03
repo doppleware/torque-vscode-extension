@@ -15,7 +15,13 @@
 
 import vscode from "vscode";
 
-import { MCP_SERVER_LABEL, MCP_SERVER_PROVIDER_ID } from "../../branding";
+import {
+  getCommandId,
+  getMcpProviderId,
+  getMcpServerName,
+  getPlatformName,
+  getProductName
+} from "../../branding";
 
 /**
  * Creates a secure MCP server URI with proper authentication headers
@@ -28,12 +34,12 @@ const createMcpServerDefinition = (
 
   // eslint-disable-next-line no-console
   console.log(
-    `[Torque MCP] Creating server definition for URL: ${mcpServerUrl}`
+    `[${getPlatformName()} MCP] Creating server definition for URL: ${mcpServerUrl}`
   );
 
   const serverUri = vscode.Uri.parse(mcpServerUrl);
   const serverDef = new vscode.McpHttpServerDefinition(
-    MCP_SERVER_LABEL,
+    getMcpServerName(),
     serverUri
   );
 
@@ -46,15 +52,15 @@ const createMcpServerDefinition = (
       "Content-Type": "application/json"
     };
     // eslint-disable-next-line no-console
-    console.log(`[Torque MCP] Set headers via headers property`);
+    console.log(`[${getPlatformName()} MCP] Set headers via headers property`);
   } catch (error) {
     // eslint-disable-next-line no-console
-    console.warn(`[Torque MCP] Failed to set headers:`, error);
+    console.warn(`[${getPlatformName()} MCP] Failed to set headers:`, error);
   }
 
   // For debugging - log the final server definition
   // eslint-disable-next-line no-console
-  console.log(`[Torque MCP] Final server definition:`, {
+  console.log(`[${getPlatformName()} MCP] Final server definition:`, {
     label: serverDef.label,
     uri: serverDef.uri.toString(),
     hasHeaders: !!(serverDef as unknown as Record<string, unknown>).headers
@@ -167,14 +173,18 @@ export const registerMcpServer = (
   showUserMessages = false
 ): McpServerDisposable => {
   // eslint-disable-next-line no-console
-  console.log(`[Torque MCP] Starting MCP server registration with URL: ${url}`);
+  console.log(
+    `[${getPlatformName()} MCP] Starting MCP server registration with URL: ${url}`
+  );
 
   try {
     validateInputs(url, token);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     // eslint-disable-next-line no-console
-    console.error(`[Torque MCP] Validation failed: ${errorMessage}`);
+    console.error(
+      `[${getPlatformName()} MCP] Validation failed: ${errorMessage}`
+    );
     throw new Error(`Invalid MCP server configuration: ${errorMessage}`, {
       cause: error
     });
@@ -185,23 +195,23 @@ export const registerMcpServer = (
     if (healthResult.success) {
       // eslint-disable-next-line no-console
       console.log(
-        `[Torque MCP] Health check passed - server is reachable (${healthResult.responseTime}ms)`
+        `[${getPlatformName()} MCP] Health check passed - server is reachable (${healthResult.responseTime}ms)`
       );
     } else {
       // eslint-disable-next-line no-console
       console.warn(
-        `[Torque MCP] Health check failed: ${healthResult.error} (${healthResult.responseTime}ms)`
+        `[${getPlatformName()} MCP] Health check failed: ${healthResult.error} (${healthResult.responseTime}ms)`
       );
 
       if (showUserMessages) {
         vscode.window
           .showWarningMessage(
-            "Torque connectivity parameters are incorrect, please run the configuration command.",
-            "Configure Torque AI"
+            `${getPlatformName()} connectivity parameters are incorrect, please run the configuration command.`,
+            `Configure ${getProductName()}`
           )
           .then((result) => {
-            if (result === "Configure Torque AI") {
-              void vscode.commands.executeCommand("torque.setup");
+            if (result === `Configure ${getProductName()}`) {
+              void vscode.commands.executeCommand(getCommandId("setup"));
             }
           });
       }
@@ -214,7 +224,7 @@ export const registerMcpServer = (
 
   // eslint-disable-next-line no-console
   console.log(
-    `[Torque MCP] Registering MCP server definition provider with ID: ${MCP_SERVER_PROVIDER_ID}`
+    `[${getPlatformName()} MCP] Registering MCP server definition provider with ID: ${getMcpProviderId()}`
   );
 
   // Check if MCP API is available (might not be in test environments or older VS Code versions)
@@ -224,7 +234,7 @@ export const registerMcpServer = (
   ) {
     // eslint-disable-next-line no-console
     console.warn(
-      `[Torque MCP] MCP API not available in this VS Code version or environment`
+      `[${getPlatformName()} MCP] MCP API not available in this VS Code version or environment`
     );
     return {
       dispose: () => {
@@ -245,24 +255,24 @@ export const registerMcpServer = (
   let provider: vscode.Disposable;
   try {
     provider = vscode.lm.registerMcpServerDefinitionProvider(
-      MCP_SERVER_PROVIDER_ID,
+      getMcpProviderId(),
       {
         onDidChangeMcpServerDefinitions: didChangeEmitter.event,
 
         provideMcpServerDefinitions: () => {
           // eslint-disable-next-line no-console
           console.log(
-            `[Torque MCP] provideMcpServerDefinitions called - VS Code is requesting server definitions`
+            `[${getPlatformName()} MCP] provideMcpServerDefinitions called - VS Code is requesting server definitions`
           );
           try {
             currentServerDef = createMcpServerDefinition(url, token);
             // eslint-disable-next-line no-console
             console.log(
-              `[Torque MCP] Successfully created server definition: ${currentServerDef.label} at ${mcpServerUrl}`
+              `[${getPlatformName()} MCP] Successfully created server definition: ${currentServerDef.label} at ${mcpServerUrl}`
             );
             // eslint-disable-next-line no-console
             console.log(
-              `[Torque MCP] Server definition details:`,
+              `[${getPlatformName()} MCP] Server definition details:`,
               currentServerDef
             );
             return [currentServerDef];
@@ -271,7 +281,7 @@ export const registerMcpServer = (
               error instanceof Error ? error.message : String(error);
             // eslint-disable-next-line no-console
             console.error(
-              `[Torque MCP] Failed to create server definition: ${errorMessage}`
+              `[${getPlatformName()} MCP] Failed to create server definition: ${errorMessage}`
             );
             vscode.window.showErrorMessage(
               `Failed to create MCP server definition: ${errorMessage}`
@@ -283,17 +293,19 @@ export const registerMcpServer = (
         resolveMcpServerDefinition: (server: vscode.McpServerDefinition) => {
           // eslint-disable-next-line no-console
           console.log(
-            `[Torque MCP] Resolving server: ${server.label}, looking for: ${MCP_SERVER_LABEL}`
+            `[${getPlatformName()} MCP] Resolving server: ${server.label}, looking for: ${getMcpServerName()}`
           );
-          if (server.label === MCP_SERVER_LABEL && currentServerDef) {
+          if (server.label === getMcpServerName() && currentServerDef) {
             // eslint-disable-next-line no-console
             console.log(
-              `[Torque MCP] Resolved server definition for: ${server.label}`
+              `[${getPlatformName()} MCP] Resolved server definition for: ${server.label}`
             );
             return currentServerDef;
           }
           // eslint-disable-next-line no-console
-          console.log(`[Torque MCP] No matching server definition found`);
+          console.log(
+            `[${getPlatformName()} MCP] No matching server definition found`
+          );
           return undefined;
         }
       }
@@ -301,34 +313,43 @@ export const registerMcpServer = (
 
     // eslint-disable-next-line no-console
     console.log(
-      `[Torque MCP] Provider registered successfully, triggering discovery...`
+      `[${getPlatformName()} MCP] Provider registered successfully, triggering discovery...`
     );
 
     // Trigger initial discovery with more aggressive timing and logging
     setTimeout(() => {
       try {
         // eslint-disable-next-line no-console
-        console.log(`[Torque MCP] Firing initial discovery event...`);
+        console.log(
+          `[${getPlatformName()} MCP] Firing initial discovery event...`
+        );
         didChangeEmitter.fire();
 
         // Trigger a second time to ensure registration
         setTimeout(() => {
           // eslint-disable-next-line no-console
-          console.log(`[Torque MCP] Firing second discovery event...`);
+          console.log(
+            `[${getPlatformName()} MCP] Firing second discovery event...`
+          );
           didChangeEmitter.fire();
         }, 1000);
 
         // Trigger a third time with longer delay in case VS Code needs more time
         setTimeout(() => {
           // eslint-disable-next-line no-console
-          console.log(`[Torque MCP] Firing third discovery event...`);
+          console.log(
+            `[${getPlatformName()} MCP] Firing third discovery event...`
+          );
           didChangeEmitter.fire();
         }, 3000);
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : String(error);
         // eslint-disable-next-line no-console
-        console.error(`[Torque MCP] Failed to trigger discovery:`, error);
+        console.error(
+          `[${getPlatformName()} MCP] Failed to trigger discovery:`,
+          error
+        );
         vscode.window.showErrorMessage(
           `Failed to trigger MCP server discovery: ${errorMessage}`
         );
@@ -351,7 +372,10 @@ export const registerMcpServer = (
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     // eslint-disable-next-line no-console
-    console.error(`[Torque MCP] Failed to register MCP server:`, error);
+    console.error(
+      `[${getPlatformName()} MCP] Failed to register MCP server:`,
+      error
+    );
     if (showUserMessages) {
       vscode.window.showErrorMessage(
         `Failed to register MCP server: ${errorMessage}`

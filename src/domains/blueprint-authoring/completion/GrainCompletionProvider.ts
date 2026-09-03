@@ -17,7 +17,7 @@
 import * as vscode from "vscode";
 import type { ApiClient } from "../../../api/ApiClient";
 import type { IacAsset } from "../../../api/services/types";
-import { getConfigurationKey } from "../../../branding";
+import { getCommandId, getConfigurationKey } from "../../../branding";
 import { logger } from "../../../utils/Logger";
 import type { SettingsManager } from "../../setup/SettingsManager";
 
@@ -322,7 +322,7 @@ export class GrainCompletionProvider implements vscode.CompletionItemProvider {
 
           // Add command to fetch catalog data and insert complete grain structure
           item.command = {
-            command: "torque.insertGrainWithInputs",
+            command: getCommandId("insertGrainWithInputs"),
             title: "Insert grain with inputs",
             arguments: [grainData]
           };
@@ -612,7 +612,7 @@ export function registerGrainCompletionProvider(
 
   // Register command to fetch catalog data and replace placeholder after insertion
   const commandDisposable = vscode.commands.registerCommand(
-    "torque.insertGrainWithInputs",
+    getCommandId("insertGrainWithInputs"),
     async (grainData: GrainCompletionData) => {
       const editor = vscode.window.activeTextEditor;
       if (!editor) {

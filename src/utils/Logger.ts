@@ -1,5 +1,7 @@
 import vscode from "vscode";
 
+import { getProductName } from "../branding";
+
 export enum LogLevel {
   DEBUG = 0,
   INFO = 1,
@@ -9,11 +11,12 @@ export enum LogLevel {
 
 export class Logger {
   private static instance: Logger;
-  private outputChannel: vscode.OutputChannel;
+  private channel: vscode.OutputChannel | undefined;
   private logLevel: LogLevel = LogLevel.INFO;
 
-  private constructor() {
-    this.outputChannel = vscode.window.createOutputChannel("Torque AI");
+  private get outputChannel(): vscode.OutputChannel {
+    this.channel ??= vscode.window.createOutputChannel(getProductName());
+    return this.channel;
   }
 
   public static getInstance(): Logger {
@@ -74,7 +77,7 @@ export class Logger {
   }
 
   public dispose(): void {
-    this.outputChannel.dispose();
+    this.channel?.dispose();
   }
 }
 

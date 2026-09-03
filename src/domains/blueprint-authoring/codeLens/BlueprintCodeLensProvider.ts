@@ -18,6 +18,12 @@ import * as path from "path";
 import type { SettingsManager } from "../../setup/SettingsManager";
 import type { ApiClient } from "../../../api/ApiClient";
 import { BLUEPRINT_SCHEMA_URL } from "../templates/blueprintTemplate";
+import {
+  getCommandId,
+  getPlatformName,
+  getProductName,
+  getTerm
+} from "../../../branding";
 
 export class BlueprintCodeLensProvider implements vscode.CodeLensProvider {
   private _onDidChangeCodeLenses: vscode.EventEmitter<void> =
@@ -72,8 +78,8 @@ export class BlueprintCodeLensProvider implements vscode.CodeLensProvider {
 
     const spaceCodeLens = new vscode.CodeLens(codeLensPosition, {
       title: spaceTitle,
-      command: "torque.setActiveSpace",
-      tooltip: "Click to change the active Torque space for this workspace"
+      command: getCommandId("setActiveSpace"),
+      tooltip: `Click to change the active ${getPlatformName()} space for this workspace`
     });
 
     // Environment Status CodeLens
@@ -83,7 +89,7 @@ export class BlueprintCodeLensProvider implements vscode.CodeLensProvider {
     // Actions CodeLens
     const actionsCodeLens = new vscode.CodeLens(codeLensPosition, {
       title: "Actions...",
-      command: "torque.blueprintActions",
+      command: getCommandId("blueprintActions"),
       tooltip: "Blueprint actions (Validate, Deploy)",
       arguments: [document.uri]
     });
@@ -105,7 +111,7 @@ export class BlueprintCodeLensProvider implements vscode.CodeLensProvider {
       return new vscode.CodeLens(position, {
         title: "Inactive",
         command: "",
-        tooltip: "Configure Torque AI to see active environments"
+        tooltip: `Configure ${getProductName()} to see active ${getTerm("environments")}`
       });
     }
 
@@ -123,15 +129,15 @@ export class BlueprintCodeLensProvider implements vscode.CodeLensProvider {
         return new vscode.CodeLens(position, {
           title: "Inactive",
           command: "",
-          tooltip: "No active environments for this blueprint"
+          tooltip: `No active ${getTerm("environments")} for this blueprint`
         });
       }
 
       // Show "Running (x)" with command to list environments
       return new vscode.CodeLens(position, {
         title: `Running (${environmentCount})`,
-        command: "torque.showBlueprintEnvironments",
-        tooltip: "Click to view active environments",
+        command: getCommandId("showBlueprintEnvironments"),
+        tooltip: `Click to view active ${getTerm("environments")}`,
         arguments: [blueprintName, response.environment_list]
       });
     } catch (error) {
@@ -141,8 +147,8 @@ export class BlueprintCodeLensProvider implements vscode.CodeLensProvider {
         command: "",
         tooltip:
           error instanceof Error
-            ? `Failed to fetch environments: ${error.message}`
-            : "Failed to fetch environments"
+            ? `Failed to fetch ${getTerm("environments")}: ${error.message}`
+            : `Failed to fetch ${getTerm("environments")}`
       });
     }
   }

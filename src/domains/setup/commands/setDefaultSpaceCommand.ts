@@ -9,6 +9,11 @@ import * as vscode from "vscode";
 import { logger } from "../../../utils/Logger";
 import type { ApiClient } from "../../../api/ApiClient";
 import type { SettingsManager } from "../SettingsManager";
+import {
+  getCommandId,
+  getPlatformName,
+  getProductName
+} from "../../../branding";
 
 /**
  * Registers the torque.setDefaultSpace command
@@ -23,18 +28,18 @@ export function registerSetDefaultSpaceCommand(
 ): vscode.Disposable | undefined {
   try {
     const command = vscode.commands.registerCommand(
-      "torque.setDefaultSpace",
+      getCommandId("setDefaultSpace"),
       async () => {
         try {
           // Get the API client
           const apiClient = getApiClient();
           if (!apiClient) {
             const configure = await vscode.window.showErrorMessage(
-              "Torque AI is not configured. Please configure it first.",
+              `${getProductName()} is not configured. Please configure it first.`,
               "Configure Now"
             );
             if (configure === "Configure Now") {
-              await vscode.commands.executeCommand("torque.setup");
+              await vscode.commands.executeCommand(getCommandId("setup"));
             }
             return;
           }
@@ -45,7 +50,7 @@ export function registerSetDefaultSpaceCommand(
 
           if (spaces.length === 0) {
             vscode.window.showWarningMessage(
-              "No spaces found in your Torque account."
+              `No spaces found in your ${getPlatformName()} account.`
             );
             return;
           }
@@ -75,8 +80,8 @@ export function registerSetDefaultSpaceCommand(
           const selected = await vscode.window.showQuickPick(spaceItems, {
             placeHolder: currentDefaultSpace
               ? `Current default space: ${currentDefaultSpace}`
-              : "Select default Torque space (used across all workspaces)",
-            title: "Set Default Torque Space"
+              : `Select default ${getPlatformName()} space (used across all workspaces)`,
+            title: `Set Default ${getPlatformName()} Space`
           });
 
           if (selected === undefined) {

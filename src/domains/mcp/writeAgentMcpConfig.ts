@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { MCP_SERVER_NAME } from "../../branding";
+import { getMcpServerName } from "../../branding";
 import { buildTomlMcpConfig } from "./writeTomlMcpConfig";
 import type { AgentMcpTarget } from "../../ides/mcpConfigTargets";
 
@@ -24,7 +24,7 @@ export const writeAgentMcpConfig = (
       buildTomlMcpConfig(
         existing,
         target.rootKey,
-        MCP_SERVER_NAME,
+        getMcpServerName(),
         serverUrlOf(url),
         token
       ),
@@ -53,7 +53,7 @@ export const writeAgentMcpConfig = (
       (entry as { url?: string }).url === serverUrl
   );
 
-  const serverName = existingEntry ? existingEntry[0] : MCP_SERVER_NAME;
+  const serverName = existingEntry ? existingEntry[0] : getMcpServerName();
 
   servers[serverName] = {
     ...(existingEntry?.[1] as Record<string, unknown> | undefined),

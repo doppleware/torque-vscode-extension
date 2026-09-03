@@ -21,7 +21,14 @@ import os from "os";
 import path from "path";
 import vscode from "vscode";
 import type { ApiClient } from "../../../api/ApiClient";
-import { getConfigurationSection } from "../../../branding";
+import {
+  getConfigurationSection,
+  getPlatformName,
+  getTerm,
+  getTerminologyBridge,
+  getToolName
+} from "../../../branding";
+import { ENVIRONMENT_DETAILS_TOOL } from "../../../brandNaming";
 import { getClient } from "../../../extension";
 import {
   AGENT_CHAT_COMMANDS,
@@ -414,12 +421,12 @@ const attachEnvironmentFileToChatContextInternal = async (
 ) => {
   // Validate input parameters
   if (!spaceName || !environmentId) {
-    throw new Error("Space name and environment ID are required");
+    throw new Error(`Space name and ${getTerm("environment")} ID are required`);
   }
 
   // Step 1: Fetch environment details (20% of work)
   progress?.report({
-    message: "Fetching environment details...",
+    message: `Fetching ${getTerm("environment")} details...`,
     increment: 0
   });
   const environmentTool = new TorqueEnvironmentDetailsTool(client);
@@ -429,7 +436,7 @@ const attachEnvironmentFileToChatContextInternal = async (
   );
 
   if (!environmentDetails) {
-    throw new Error("No environment details retrieved");
+    throw new Error(`No ${getTerm("environment")} details retrieved`);
   }
 
   progress?.report({ increment: 20 });
@@ -452,7 +459,7 @@ const attachEnvironmentFileToChatContextInternal = async (
 
   // Step 3: Transform data (10% of work)
   progress?.report({
-    message: "Processing environment data...",
+    message: `Processing ${getTerm("environment")} data...`,
     increment: 10
   });
   const simplifiedDetails = EnvironmentDetailsTransformer.transform(
@@ -553,26 +560,27 @@ const attachEnvironmentFileToChatContextInternal = async (
 
   const environmentDetailsToolName =
     agent === "copilot"
-      ? "**torque_get_environment_details**"
+      ? `**${getToolName(ENVIRONMENT_DETAILS_TOOL)}**`
       : "**get_environment_details**";
 
   // Create instruction content that tells the AI to use the tool
-  const instructionContent = `# Torque Environment Context
+  const instructionContent = `# ${getPlatformName()} ${getTerm("Environment")} Context
 
 **Space**: ${spaceName}
-**Environment ID**: ${environmentId}
-**Environment Name**: ${environmentName}
+**${getTerm("Environment")} ID**: ${environmentId}
+**${getTerm("Environment")} Name**: ${environmentName}
 
 ## Instructions for AI
 
-The environment "${environmentId}" is the current environment in scope.
+The ${getTerm("environment")} "${environmentId}" is the current ${getTerm("environment")} in scope.
 To answer any questions by the user you can first use the ${environmentDetailsToolName} tool.
 For any questions the user has about specific infrastructure or applications please run this tool first 
-to get the complete environment context which includes:
-1. A list of all infrastructure resources in the environment (answering questions like "what's the name of the Admin service S3 resource")
-2. Available automation workflows: Actions that can be used to fulfill user requests on the environment.
-Use this information in conjunction with the Torque MCP server and other MCP servers and tools to help the user accomplish their goals.
-`;
+to get the complete ${getTerm("environment")} context which includes:
+1. A list of all infrastructure resources in the ${getTerm("environment")} (answering questions like "what's the name of the Admin service S3 resource")
+2. Available automation workflows: Actions that can be used to fulfill user requests on the ${getTerm("environment")}.
+Use this information in conjunction with the ${getPlatformName()} MCP server and other MCP servers and tools to help the user accomplish their goals.
+
+${getTerminologyBridge()}`;
 
   // Write instruction content to file
   fs.writeFileSync(filePath, instructionContent, "utf8");
@@ -615,13 +623,13 @@ Use this information in conjunction with the Torque MCP server and other MCP ser
     const copyPromptAction = "Copy prompt";
     void vscode.window
       .showInformationMessage(
-        "No supported AI chat was detected. The environment context file has been opened.",
+        `No supported AI chat was detected. The ${getTerm("environment")} context file has been opened.`,
         copyPromptAction
       )
       .then((selection) => {
         if (selection === copyPromptAction) {
           void vscode.env.clipboard.writeText(
-            `Debug Torque environment ${environmentId} in space ${spaceName}. Context file: ${filePath}`
+            `Debug ${getPlatformName()} ${getTerm("environment")} ${environmentId} in space ${spaceName}. Context file: ${filePath}`
           );
         }
       });
@@ -636,7 +644,7 @@ Use this information in conjunction with the Torque MCP server and other MCP ser
   await searchAndOpenEnvironmentFile(searchName);
 
   vscode.window.showInformationMessage(
-    "Environment details have been added to the chat context"
+    `${getTerm("Environment")} details have been added to the chat context`
   );
 };
 
@@ -652,7 +660,7 @@ export const attachEnvironmentFileToChatContext = async (
   return vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.Notification,
-      title: "Loading Environment Context",
+      title: `Loading ${getTerm("Environment")} Context`,
       cancellable: false
     },
     async (progress) => {
@@ -676,12 +684,14 @@ export const attachEnvironmentFileToChatContext = async (
           error instanceof Error ? error.message : "Unknown error";
 
         // Provide specific error messages based on error type
-        let userMessage = `Failed to attach environment details to chat context: ${errorMessage}`;
+        let userMessage = `Failed to attach ${getTerm("environment")} details to chat context: ${errorMessage}`;
 
         if (errorMessage.includes("API request failed")) {
-          userMessage = `Unable to fetch environment details. Please check your Torque configuration and network connection.`;
-        } else if (errorMessage.includes("Space name and environment ID")) {
-          userMessage = `Invalid environment URL format. Please check the space name and environment ID.`;
+          userMessage = `Unable to fetch ${getTerm("environment")} details. Please check your ${getPlatformName()} configuration and network connection.`;
+        } else if (
+          errorMessage.includes(`Space name and ${getTerm("environment")} ID`)
+        ) {
+          userMessage = `Invalid ${getTerm("environment")} URL format. Please check the space name and ${getTerm("environment")} ID.`;
         } else if (
           errorMessage.includes("ENOENT") ||
           errorMessage.includes("permission")

@@ -1,0 +1,15 @@
+{
+  "manifest": {
+    "name": "stack-automation-ai",
+    "displayName": "Stack Automation AI",
+    "icon": "branding/stack-automation/logo.png"
+  },
+  "glossary": {
+    "environment": "Deployment",
+    "catalog": "Solution Hub",
+    "credential": "Integration"
+  },
+  "phrases": {
+    "environment deployment": "Deployment"
+  }
+}

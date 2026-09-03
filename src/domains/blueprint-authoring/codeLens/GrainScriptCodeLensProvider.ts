@@ -9,6 +9,7 @@
 
 import * as vscode from "vscode";
 import { BLUEPRINT_SCHEMA_URL } from "../templates/blueprintTemplate";
+import { getCommandId } from "../../../branding";
 
 export class GrainScriptCodeLensProvider implements vscode.CodeLensProvider {
   private _onDidChangeCodeLenses: vscode.EventEmitter<void> =
@@ -46,7 +47,7 @@ export class GrainScriptCodeLensProvider implements vscode.CodeLensProvider {
 
       return new vscode.CodeLens(position, {
         title: "$(add) Add Script",
-        command: "torque.addGrainScript",
+        command: getCommandId("addGrainScript"),
         tooltip: "Add a post-helm-install script to this grain",
         arguments: [document.uri, grainInfo.grainName, grainInfo.line]
       });

@@ -7,6 +7,7 @@
 import * as vscode from "vscode";
 import { logger } from "../../utils/Logger";
 import type { SettingsManager } from "./SettingsManager";
+import { getCommandId, getPlatformName, getProductName } from "../../branding";
 
 /**
  * Checks if the extension is properly configured
@@ -65,16 +66,16 @@ export const showSetupNotificationIfNeeded = async (
     if (isFirstTime) {
       logger.info("First-time installation detected, showing welcome popup");
       const result = await vscode.window.showInformationMessage(
-        "The Torque extension has been installed, click below to configure it",
+        `The ${getPlatformName()} extension has been installed, click below to configure it`,
         "Configure",
         "Later"
       );
 
       if (result === "Configure") {
         logger.info(
-          "User selected to configure Torque AI from first-time popup"
+          `User selected to configure ${getProductName()} from first-time popup`
         );
-        await vscode.commands.executeCommand("torque.setup");
+        await vscode.commands.executeCommand(getCommandId("setup"));
       } else {
         logger.info("User chose to skip first-time configuration");
       }
@@ -84,14 +85,14 @@ export const showSetupNotificationIfNeeded = async (
     } else {
       logger.info("Extension not configured, showing setup notification");
       const result = await vscode.window.showInformationMessage(
-        "🚀 Torque AI extension is installed but not configured. Set up your API connection to enable MCP tools.",
-        "Configure Torque AI",
+        `🚀 ${getProductName()} extension is installed but not configured. Set up your API connection to enable MCP tools.`,
+        `Configure ${getProductName()}`,
         "Later"
       );
 
-      if (result === "Configure Torque AI") {
-        logger.info("User selected to configure Torque AI");
-        await vscode.commands.executeCommand("torque.setup");
+      if (result === `Configure ${getProductName()}`) {
+        logger.info(`User selected to configure ${getProductName()}`);
+        await vscode.commands.executeCommand(getCommandId("setup"));
       } else {
         logger.info("User chose to skip configuration");
       }
@@ -103,7 +104,7 @@ export const showSetupNotificationIfNeeded = async (
     );
 
     const result = await vscode.window.showInformationMessage(
-      "🎉 Welcome to Torque AI! Your extension is already configured and ready to use.",
+      `🎉 Welcome to ${getProductName()}! Your extension is already configured and ready to use.`,
       "Open Chat",
       "Check Status"
     );
@@ -114,12 +115,12 @@ export const showSetupNotificationIfNeeded = async (
         await vscode.commands.executeCommand("workbench.action.chat.open");
       } catch {
         vscode.window.showInformationMessage(
-          "Could not open chat automatically. Please open Copilot Chat manually and look for Torque tools."
+          `Could not open chat automatically. Please open Copilot Chat manually and look for ${getPlatformName()} tools.`
         );
       }
     } else if (result === "Check Status") {
       logger.info("User selected to check status from first-time welcome");
-      await vscode.commands.executeCommand("torque.checkMcpStatus");
+      await vscode.commands.executeCommand(getCommandId("checkMcpStatus"));
     }
 
     // Mark as activated after showing welcome

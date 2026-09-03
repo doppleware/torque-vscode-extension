@@ -25,6 +25,7 @@ import * as path from "path";
 import * as yaml from "js-yaml";
 import { logger } from "../../../utils/Logger";
 import { getRepositoryName } from "../../../utils/git";
+import { getCommandId } from "../../../branding";
 
 interface ScriptConfig {
   store: string;
@@ -38,7 +39,7 @@ interface ScriptConfig {
  */
 export function registerAddGrainScriptCommand(): vscode.Disposable {
   return vscode.commands.registerCommand(
-    "torque.addGrainScript",
+    getCommandId("addGrainScript"),
     async (blueprintUri: vscode.Uri, grainName: string, grainLine: number) => {
       try {
         logger.info(

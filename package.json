@@ -3,8 +3,8 @@
   "displayName": "Torque AI",
   "description": "Autonomous identification, root cause analysis and remediation of code and infrastructure issues",
   "version": "0.0.1",
-  "publisher": "quali",
-  "icon": "logo.png",
+  "publisher": "Quali",
+  "icon": "branding/torque/logo.png",
   "engines": {
     "vscode": "^1.106.0"
   },
@@ -210,7 +210,7 @@
     "clean": "rimraf ./out",
     "build:dev": "npm run clean && npx jiti esbuild.ts",
     "build:prod": "npm run clean && npx jiti esbuild.ts --production",
-    "check-types": "tsc --noEmit",
+    "check-types": "tsc --noEmit && tsc --noEmit -p tsconfig.scripts.json",
     "compile:dev": "npm run check-types && npm run build:dev",
     "compile:prod": "npm run check-types && npm run build:prod",
     "watch": "npm-run-all -p watch:*",
@@ -221,7 +221,10 @@
     "precommit": "lint-staged",
     "prepare": "husky",
     "vscode:prepublish": "npm run compile:prod",
-    "package": "vsce package",
+    "package:torque": "npx jiti scripts/brand.ts --brand=torque --out=dist/torque-ai.vsix",
+    "package:stack-automation": "npx jiti scripts/brand.ts --brand=stack-automation --out=dist/stack-automation-ai.vsix",
+    "package:all": "npm run package:torque && npm run package:stack-automation",
+    "verify:packages": "npx jiti scripts/verifyVsix.ts",
     "test": "vscode-test",
     "pretest": "npm run compile:dev && npm run lint"
   },
